@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: research-intelligence-platform
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/research_intelligence}
+    username: ${SPRING_DATASOURCE_USERNAME:research}
+    password: ${SPRING_DATASOURCE_PASSWORD:research}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:}
+
+ai:
+  provider: ${AI_PROVIDER:mock}
+  embedding-provider: ${AI_EMBEDDING_PROVIDER:mock}
+  embedding-dimension: ${AI_EMBEDDING_DIMENSION:1024}
+  retrieval:
+    default-limit: ${AI_RETRIEVAL_DEFAULT_LIMIT:10}
+    max-limit: ${AI_RETRIEVAL_MAX_LIMIT:20}
+    min-similarity: ${AI_RETRIEVAL_MIN_SIMILARITY:0.35}
+    strict-min-similarity: ${AI_RETRIEVAL_STRICT_MIN_SIMILARITY:0.45}
+    broad-min-similarity: ${AI_RETRIEVAL_BROAD_MIN_SIMILARITY:0.25}
+    allow-no-context-answers: ${AI_RETRIEVAL_ALLOW_NO_CONTEXT_ANSWERS:false}
+  copilot:
+    answer-evaluation-enabled: ${AI_COPILOT_ANSWER_EVALUATION_ENABLED:false}
+  ollama:
+    base-url: ${AI_OLLAMA_BASE_URL:http://localhost:11434}
+    chat-model: ${AI_OLLAMA_CHAT_MODEL:qwen2.5:14b}
+    embedding-model: ${AI_OLLAMA_EMBEDDING_MODEL:bge-m3}

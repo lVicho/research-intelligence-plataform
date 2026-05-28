@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+if ! command -v mvn >/dev/null 2>&1; then
+  echo "Maven is required to use this lightweight project wrapper." >&2
+  echo "Install Maven 3.6.3 or newer, then rerun this command." >&2
+  exit 1
+fi
+
+exec mvn "$@"

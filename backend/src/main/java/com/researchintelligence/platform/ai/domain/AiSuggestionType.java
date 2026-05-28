@@ -1,0 +1,14 @@
+package com.researchintelligence.platform.ai.domain;
+
+public enum AiSuggestionType {
+    PUBLIC_SUMMARY,
+    TOPIC_RECOMMENDATION,
+    DATA_QUALITY_FIX,
+    VALIDATION_ASSISTANCE,
+    NEWS_DRAFT,
+    PUBLICATION_EXPLANATION,
+    PROFILE_COMPARISON,
+    IMPACT_HIGHLIGHT,
+    DEMO_QUERY,
+    REPORT_TEMPLATE_SUGGESTION
+}

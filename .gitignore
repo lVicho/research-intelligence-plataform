@@ -1,0 +1,13 @@
+.idea/
+.vscode/
+
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+*.log
+.DS_Store
+Thumbs.db
