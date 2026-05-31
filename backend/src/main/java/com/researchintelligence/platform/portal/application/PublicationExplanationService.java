@@ -126,10 +126,10 @@ public class PublicationExplanationService {
 
         boolean missingAbstract = isBlank(publication.getAbstractText());
         if (missingAbstract) {
-            warnings.add("La publicacion no tiene resumen validado disponible; la explicacion se limita a titulo, temas y metadatos publicos.");
+            warnings.add("La publicación no tiene resumen validado disponible; la explicación se limita a título, temas y metadatos públicos.");
         }
         if (missingAbstract || (isBlank(publication.getPublicSummary()) && topics.isEmpty())) {
-            warnings.add("El contexto publico validado es debil; evita interpretar metodos, resultados o impacto.");
+            warnings.add("El contexto público validado es débil; evita interpretar métodos, resultados o impacto.");
         }
         warnings.addAll(relatedPublicationEvidence.warnings());
 
@@ -155,7 +155,7 @@ public class PublicationExplanationService {
         GeneratedSections fallback = fallbackSections(publication, evidence, style);
         if (!"ollama".equalsIgnoreCase(llmService.provider())) {
             if ("mock".equalsIgnoreCase(llmService.provider())) {
-                warnings.add("El proveedor LLM mock esta activo; se devolvio una explicacion determinista basada en evidencia validada.");
+                warnings.add("El proveedor LLM mock está activo; se devolvió una explicación determinista basada en evidencia validada.");
             }
             return fallback;
         }
@@ -172,7 +172,7 @@ public class PublicationExplanationService {
             if (parsed.isUsable()) {
                 return parsed;
             }
-            warnings.add("El proveedor de IA no devolvio una estructura util; se uso una explicacion determinista basada en evidencia validada.");
+            warnings.add("El proveedor de IA no devolvió una estructura útil; se usó una explicación determinista basada en evidencia validada.");
             return fallback;
         } catch (BusinessRuleException | JsonProcessingException exception) {
             warnings.add(providerUnavailableWarning(exception.getMessage()));
@@ -185,33 +185,33 @@ public class PublicationExplanationService {
         ExplanationEvidence evidence,
         PublicationExplanationStyle style
     ) {
-        String descriptor = "La publicacion validada " + quote(publication.getTitle())
+        String descriptor = "La publicación validada " + quote(publication.getTitle())
             + (publication.getPublicationYear() == null ? "" : " (" + publication.getPublicationYear() + ")")
-            + (publication.getType() == null ? "" : " esta registrada como " + publication.getType().name())
+            + (publication.getType() == null ? "" : " está registrada como " + publication.getType().name())
             + ".";
         String topicSentence = evidence.relatedTopics().isEmpty()
-            ? "No hay temas validados suficientes para ampliar la descripcion publica."
-            : "La ficha publica la relaciona con " + joinReadable(labels(evidence.relatedTopics()), 4) + ".";
+            ? "No hay temas validados suficientes para ampliar la descripción pública."
+            : "La ficha pública la relaciona con " + joinReadable(labels(evidence.relatedTopics()), 4) + ".";
         String abstractSentence = isBlank(publication.getAbstractText())
             ? "No hay resumen validado disponible para explicar contenido, metodo o resultados."
             : "El resumen validado disponible indica: " + truncate(publication.getAbstractText(), style == PublicationExplanationStyle.TECHNICAL ? 480 : 320);
         String plainSummary = descriptor + " " + abstractSentence + " " + topicSentence;
         String problemAddressed = isBlank(publication.getAbstractText())
-            ? "No se puede determinar con suficiente precision a partir de la evidencia publica validada."
-            : "Debe interpretarse desde el resumen validado, sin anadir objetivos no registrados: " + truncate(publication.getAbstractText(), 260);
+            ? "No se puede determinar con suficiente precisión a partir de la evidencia pública validada."
+            : "Debe interpretarse desde el resumen validado, sin añadir objetivos no registrados: " + truncate(publication.getAbstractText(), 260);
         String whyItMatters = evidence.relatedTopics().isEmpty()
-            ? "La evidencia publica no permite afirmar impacto; solo confirma que la publicacion esta validada para consulta en el portal."
-            : "Ayuda a contextualizar actividad publica validada en " + joinReadable(labels(evidence.relatedTopics()), 4) + ", sin inferir impacto adicional.";
-        String approach = "No hay informacion metodologica separada en la ficha publica. Solo deben usarse el resumen, los temas y los metadatos validados.";
+            ? "La evidencia pública no permite afirmar impacto; solo confirma que la publicación está validada para consulta en el portal."
+            : "Ayuda a contextualizar actividad pública validada en " + joinReadable(labels(evidence.relatedTopics()), 4) + ", sin inferir impacto adicional.";
+        String approach = "No hay información metodológica separada en la ficha pública. Solo deben usarse el resumen, los temas y los metadatos validados.";
         return new GeneratedSections(plainSummary, problemAddressed, whyItMatters, approach);
     }
 
     private String explanationQuestion(PublicationEntity publication, PublicationExplanationStyle style, String language) {
         return """
-            Genera una explicacion publica segura para la publicacion "%s".
+            Genera una explicación pública segura para la publicación "%s".
             Idioma solicitado: %s. Estilo: %s.
             Usa exclusivamente el contexto validado proporcionado.
-            No inventes metodos, resultados, hallazgos, impacto, citas, autores, unidades ni metricas.
+            No inventes métodos, resultados, hallazgos, impacto, citas, autores, unidades ni métricas.
             Si el resumen o el contexto no permiten responder un campo, dilo claramente en ese campo.
             No sobreafirmes relevancia ni impacto.
             Devuelve solo JSON valido con estas claves string: plainSummary, problemAddressed, whyItMatters, approach.
@@ -222,18 +222,18 @@ public class PublicationExplanationService {
         return """
             Titulo: %s
             Resumen validado: %s
-            Resumen publico revisado: %s
+            Resumen público revisado: %s
             Ano: %s
             Tipo: %s
-            Estado de publicacion: %s
+            Estado de publicación: %s
             Fuente: %s
             DOI: %s
             Idioma registrado: %s
             Temas validados: %s
             Autores registrados: %s
             Investigadores internos validados: %s
-            Unidades publicas relacionadas: %s
-            Publicaciones publicas relacionadas: %s
+            Unidades públicas relacionadas: %s
+            Publicaciones públicas relacionadas: %s
             """.formatted(
             value(publication.getTitle()),
             value(publication.getAbstractText()),
@@ -392,9 +392,9 @@ public class PublicationExplanationService {
 
     private String providerUnavailableWarning(String message) {
         if (message != null && message.toLowerCase(Locale.ROOT).contains("ollama")) {
-            return "Ollama no esta disponible para generar la explicacion; se uso una version determinista basada en evidencia validada.";
+            return "Ollama no está disponible para generar la explicación; se usó una versión determinista basada en evidencia validada.";
         }
-        return "El proveedor de IA no devolvio una explicacion util; se uso una version determinista basada en evidencia validada.";
+        return "El proveedor de IA no devolvió una explicación útil; se usó una versión determinista basada en evidencia validada.";
     }
 
     private String normalizeLanguage(String language) {

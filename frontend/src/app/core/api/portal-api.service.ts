@@ -7,6 +7,7 @@ import {
   PortalDemoQuery,
   PortalDemoQueryContext,
   PortalPageResponse,
+  PortalPublicationDetail,
   PortalResearchUnitDetail,
   PortalResearchUnitSummary,
   PortalResearcherDetail,
@@ -80,6 +81,10 @@ export class PortalApiService {
 
   researcher(id: number): Observable<PortalResearcherDetail> {
     return this.http.get<PortalResearcherDetail>(`${this.baseUrl}/researchers/${id}`);
+  }
+
+  publication(id: number): Observable<PortalPublicationDetail> {
+    return this.http.get<PortalPublicationDetail>(`${this.baseUrl}/publications/${id}`);
   }
 
   demoQueries(filters: PortalDemoQueryFilters = {}): Observable<PortalDemoQuery[]> {

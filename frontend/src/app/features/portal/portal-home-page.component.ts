@@ -51,7 +51,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           <span>Actividad conectada</span>
           <strong>{{ activityCount() }}</strong>
           <p>registros públicos enlazados entre personas, publicaciones, unidades y temas institucionales.</p>
-          <a routerLink="/portal/asistente">Preguntar al asistente</a>
+          <a routerLink="/portal/publicaciones">Explorar publicaciones</a>
         </div>
       </section>
 
@@ -103,7 +103,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
         >
           <div class="publication-list">
             @for (publication of recentPublications(); track publication.id) {
-              <a class="publication-card" [routerLink]="['/publications', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver al inicio')">
+              <a class="publication-card" [routerLink]="['/portal/publicaciones', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver al inicio')">
                 <span class="publication-year">{{ publication.year || 's. f.' }}</span>
                 <div class="publication-main">
                   <strong>{{ publication.title }}</strong>
@@ -127,7 +127,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
         <div class="news-feature-head">
           <div>
             <p class="section-kicker">Noticias destacadas</p>
-            <h2>Lecturas cortas para seguir la actualidad cientifica del portal.</h2>
+            <h2>Lecturas cortas para seguir la actualidad científica del portal.</h2>
           </div>
           <a class="subtle-link" routerLink="/portal/noticias">Ver todas las noticias</a>
         </div>
@@ -157,7 +157,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
               </div>
             </a>
           } @empty {
-            <rip-empty-state title="Sin noticias destacadas" message="Cuando existan noticias publicadas apareceran aqui." />
+              <rip-empty-state title="Sin noticias destacadas" message="Cuando existan noticias publicadas aparecerán aquí." />
           }
         </div>
       </section>
@@ -770,7 +770,7 @@ export class PortalHomePageComponent implements OnInit {
 
   newsDateLabel(value: string | null): string {
     if (!value) {
-      return 'Sin fecha de publicacion';
+      return 'Sin fecha de publicación';
     }
     return new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(new Date(value));
   }

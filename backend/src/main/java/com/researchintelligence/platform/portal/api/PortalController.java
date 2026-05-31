@@ -103,6 +103,11 @@ public class PortalController {
         );
     }
 
+    @GetMapping("/publications/{id}")
+    public PortalPublicationDetailResponse publicationDetail(@PathVariable Long id) {
+        return service.publicationDetail(id);
+    }
+
     @PostMapping("/publications/{id}/explain")
     public PublicationExplanationResponse explainPublication(
         @PathVariable Long id,

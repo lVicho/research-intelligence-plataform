@@ -125,7 +125,7 @@ public class RelatedPublicationService {
 
         List<String> warnings = new ArrayList<>();
         if (metadataOnly) {
-            warnings.add("No hay embeddings disponibles para esta publicacion con el proveedor/modelo/dimension configurados; se ha usado ranking solo por metadatos.");
+            warnings.add("No hay embeddings disponibles para esta publicación con el proveedor/modelo/dimensión configurados; se ha usado ranking solo por metadatos.");
         }
 
         List<RelatedPublicationResponse> related = candidates.stream()
@@ -381,7 +381,7 @@ public class RelatedPublicationService {
     ) {
         List<String> reasons = new ArrayList<>();
         if (!metadataOnly && semanticScore != null) {
-            reasons.add("Similitud semantica " + formatPercent(semanticScore) + ".");
+            reasons.add("Similitud semántica " + formatPercent(semanticScore) + ".");
         }
         if (!sharedTopicNames.isEmpty()) {
             reasons.add("Comparte temas: " + String.join(", ", sharedTopicNames) + ".");
@@ -390,13 +390,13 @@ public class RelatedPublicationService {
             reasons.add("Comparte autores internos: " + String.join(", ", sharedAuthorNames) + ".");
         }
         if (!relatedResearchUnitNames.isEmpty()) {
-            reasons.add("Relacion por unidades de investigacion: " + String.join(", ", relatedResearchUnitNames) + ".");
+            reasons.add("Relación por unidades de investigación: " + String.join(", ", relatedResearchUnitNames) + ".");
         }
         if (yearDistance <= 2) {
             reasons.add("Publicaciones cercanas en el tiempo.");
         }
         if (reasons.isEmpty() && finalScore > 0.0) {
-            reasons.add("Relacion debil por proximidad temporal o metadatos parciales.");
+            reasons.add("Relación débil por proximidad temporal o metadatos parciales.");
         }
         return reasons;
     }
@@ -406,10 +406,10 @@ public class RelatedPublicationService {
             return "Resultado calculado sin embeddings.";
         }
         if (semanticScore == null) {
-            return "Sin embedding comparable para esta publicacion; la relacion depende de metadatos.";
+            return "Sin embedding comparable para esta publicación; la relación depende de metadatos.";
         }
         if (finalScore < DEFAULT_MIN_SCORE) {
-            return "Relacion debil; revisa los motivos antes de usarla.";
+            return "Relación débil; revisa los motivos antes de usarla.";
         }
         return null;
     }

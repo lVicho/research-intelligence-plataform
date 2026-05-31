@@ -698,7 +698,6 @@ export class ShellComponent {
     { label: 'Investigadores', path: '/portal/investigadores' },
     { label: 'Publicaciones', path: '/portal/publicaciones' },
     { label: 'Guía de expertos', path: '/portal/guia-expertos' },
-    { label: 'Asistente', path: '/portal/asistente' }
   ];
 
   readonly researcherNavigation: NavigationItem[] = [

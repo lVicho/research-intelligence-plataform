@@ -58,7 +58,7 @@ export function publicationStatusTone(status: string | PublicationStatus): 'neut
 export function newsArticleStatusLabel(status: string | NewsArticleStatus): string {
   const labels: Record<string, string> = {
     DRAFT: 'Borrador',
-    PENDING_REVIEW: 'Pendiente de revision',
+    PENDING_REVIEW: 'Pendiente de revisión',
     PUBLISHED: 'Publicada',
     ARCHIVED: 'Archivada'
   };
@@ -177,7 +177,7 @@ export function aiSuggestionTypeLabel(type: string | AiSuggestionType): string {
     return 'Borrador de noticia';
   }
   const labels: Record<string, string> = {
-    PUBLIC_SUMMARY: 'Resumen publico',
+    PUBLIC_SUMMARY: 'Resumen público',
     RESEARCHER_SUMMARY: 'Resumen de investigador',
     RESEARCHER_TOPIC: 'Tema sugerido para investigador',
     PUBLICATION_METADATA: 'Metadatos de publicación',

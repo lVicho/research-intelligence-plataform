@@ -42,11 +42,11 @@ interface SupportEvaluation {
 }
 
 const FALLBACK_ASSISTANT_PROMPTS = [
-  'Â¿QuÃ© lÃ­neas de investigaciÃ³n aparecen sobre IA clÃ­nica?',
-  'Â¿QuÃ© publicaciones conectan salud pÃºblica e IA?',
-  'Â¿QuÃ© investigadores conectan varias lÃ­neas de investigaciÃ³n?',
-  'Compara IA clÃ­nica con salud pÃºblica',
-  'Â¿QuÃ© publicaciones tratan sobre biodiversidad y corredores ecolÃ³gicos?'
+  '¿Qué líneas de investigación aparecen sobre IA clínica?',
+  '¿Qué publicaciones conectan salud pública e IA?',
+  '¿Qué investigadores conectan varias líneas de investigación?',
+  'Compara IA clínica con salud pública',
+  '¿Qué publicaciones tratan sobre biodiversidad y corredores ecológicos?'
 ];
 
 @Component({
@@ -70,8 +70,8 @@ const FALLBACK_ASSISTANT_PROMPTS = [
   template: `
     <section class="page copilot-page">
       <rip-page-header
-        title="Asistente de investigaciÃ³n"
-        subtitle="Haz preguntas sobre publicaciones, temas y conexiones de investigaciÃ³n. La respuesta enlaza las publicaciones que la respaldan."
+        title="Asistente de investigación"
+        subtitle="Haz preguntas sobre publicaciones, temas y conexiones de investigación. La respuesta enlaza las publicaciones que la respaldan."
         eyebrow="Asistente"
       />
 
@@ -79,10 +79,10 @@ const FALLBACK_ASSISTANT_PROMPTS = [
         <section class="surface-intro assistant-intro">
           <div>
             <p class="section-kicker">Consulta guiada</p>
-            <h2>Pregunta primero. Revisa la respuesta y sus publicaciones citadas despuÃ©s.</h2>
-            <p>Si quieres profundizar, tambiÃ©n podrÃ¡s abrir el contexto utilizado por el asistente en un panel secundario.</p>
+            <h2>Pregunta primero. Revisa la respuesta y sus publicaciones citadas después.</h2>
+            <p>Si quieres profundizar, también podrás abrir el contexto utilizado por el asistente en un panel secundario.</p>
           </div>
-          <p class="assistant-note">El asistente responde con informaciÃ³n pÃºblica revisada por la instituciÃ³n.</p>
+          <p class="assistant-note">El asistente responde con información pública revisada por la institución.</p>
         </section>
       } @else {
         <rip-visibility-note [message]="copilotVisibilityNote()" />
@@ -102,9 +102,9 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                     matInput
                     rows="5"
                     formControlName="question"
-                    placeholder="Ej. Â¿QuÃ© publicaciones conectan salud pÃºblica e IA clÃ­nica?"
+                    placeholder="Ej. ¿Qué publicaciones conectan salud pública e IA clínica?"
                   ></textarea>
-                  <mat-hint>El asistente responderÃ¡ usando solo la informaciÃ³n pÃºblica encontrada para esta consulta.</mat-hint>
+                  <mat-hint>El asistente responderá usando solo la información pública encontrada para esta consulta.</mat-hint>
                 </mat-form-field>
 
                 <rip-demo-query-chips
@@ -116,28 +116,28 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                 />
 
                 <details class="advanced-options">
-                  <summary>MÃ¡s opciones de bÃºsqueda</summary>
+                  <summary>Más opciones de búsqueda</summary>
                   <div class="advanced-grid">
                     <mat-form-field appearance="outline">
-                      <mat-label>NÃºmero mÃ¡ximo de publicaciones</mat-label>
+                      <mat-label>Número máximo de publicaciones</mat-label>
                       <input matInput type="number" min="1" max="20" formControlName="limit">
                     </mat-form-field>
                     <mat-form-field appearance="outline">
-                      <mat-label>Modo de bÃºsqueda</mat-label>
+                      <mat-label>Modo de búsqueda</mat-label>
                       <mat-select formControlName="retrievalMode">
-                        <mat-option value="STRICT">MÃ¡s precisa</mat-option>
+                        <mat-option value="STRICT">Más precisa</mat-option>
                         <mat-option value="BALANCED">Equilibrada</mat-option>
-                        <mat-option value="BROAD">MÃ¡s amplia</mat-option>
+                        <mat-option value="BROAD">Más amplia</mat-option>
                       </mat-select>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
-                      <mat-label>Coincidencia mÃ­nima</mat-label>
+                      <mat-label>Coincidencia mínima</mat-label>
                       <input matInput type="number" min="0" max="1" step="0.01" formControlName="minSimilarity">
                     </mat-form-field>
                   </div>
                   @if (canIncludeNonValidated()) {
                     <div class="advanced-toggle-row">
-                      <span class="visibility-filter-label">Filtro de validaciÃ³n</span>
+                      <span class="visibility-filter-label">Filtro de validación</span>
                       <mat-checkbox formControlName="includeNonValidated">Incluir datos no validados</mat-checkbox>
                     </div>
                   }
@@ -176,7 +176,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                   <mat-spinner diameter="30" />
                   <div>
                     <strong>Preparando la respuesta</strong>
-                    <span>El asistente estÃ¡ redactando una respuesta con las publicaciones pÃºblicas encontradas.</span>
+                    <span>El asistente está redactando una respuesta con las publicaciones públicas encontradas.</span>
                   </div>
                 </div>
               } @else if (answer()) {
@@ -267,7 +267,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
           <mat-card appearance="outlined" class="evidence-card">
             <mat-card-header>
               <mat-card-title>Publicaciones citadas</mat-card-title>
-              <mat-card-subtitle>Solo aparecen las publicaciones mencionadas explÃ­citamente en la respuesta.</mat-card-subtitle>
+              <mat-card-subtitle>Solo aparecen las publicaciones mencionadas explícitamente en la respuesta.</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content>
               @if (answer()?.citedPublications?.length) {
@@ -305,13 +305,13 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                         </div>
                       }
                       <div class="citation-card-actions">
-                        <a mat-stroked-button [routerLink]="publicationLink(publication.id)" [queryParams]="navigationContext.returnQueryParams('Volver al asistente')">Ver publicaciÃ³n</a>
+                        <a mat-stroked-button [routerLink]="publicationLink(publication.id)" [queryParams]="navigationContext.returnQueryParams('Volver al asistente')">Ver publicación</a>
                       </div>
                     </article>
                   }
                 </div>
               } @else {
-                <div class="empty-state">Cuando la respuesta cite publicaciones, aparecerÃ¡n aquÃ­ para que puedas revisarlas.</div>
+                <div class="empty-state">Cuando la respuesta cite publicaciones, aparecerán aquí para que puedas revisarlas.</div>
               }
             </mat-card-content>
           </mat-card>
@@ -344,7 +344,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
 
           <mat-card appearance="outlined" class="context-card">
             <mat-card-header>
-              <mat-card-title>Resumen de la bÃºsqueda</mat-card-title>
+              <mat-card-title>Resumen de la búsqueda</mat-card-title>
             </mat-card-header>
             <mat-card-content>
               @if (retrievalLoading()) {
@@ -352,7 +352,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                   <mat-spinner diameter="24" />
                   <div>
                     <strong>Buscando publicaciones relacionadas</strong>
-                    <span>Estamos reuniendo las fuentes pÃºblicas mÃ¡s Ãºtiles para responder.</span>
+                    <span>Estamos reuniendo las fuentes públicas más útiles para responder.</span>
                   </div>
                 </div>
               } @else {
@@ -367,7 +367,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                       <strong>{{ answer()?.citedPublications?.length ?? 0 }}</strong>
                     </div>
                     <div>
-                      <span>Tipo de bÃºsqueda</span>
+                      <span>Tipo de búsqueda</span>
                       <strong>{{ retrievalLabel(context.retrievalMethod) }}</strong>
                     </div>
                     <div>
@@ -406,7 +406,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                     </div>
                   }
                 } @else {
-                  <div class="empty-state compact">AquÃ­ verÃ¡s cuÃ¡ntas fuentes se han encontrado y quÃ© temas aparecen alrededor de tu pregunta.</div>
+                  <div class="empty-state compact">Aquí verás cuántas fuentes se han encontrado y qué temas aparecen alrededor de tu pregunta.</div>
                 }
               }
             </mat-card-content>
@@ -431,7 +431,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
             </mat-card-header>
             <mat-card-content>
               @if (fullContextOpen()) {
-                <p class="context-note">AquÃ­ aparecen las publicaciones que ayudaron a construir la respuesta, aunque no todas queden citadas de forma explÃ­cita.</p>
+                <p class="context-note">Aquí aparecen las publicaciones que ayudaron a construir la respuesta, aunque no todas queden citadas de forma explícita.</p>
                 @if (retrievalLoading()) {
                   <div class="skeleton-stack publications">
                     <span></span>
@@ -475,11 +475,11 @@ const FALLBACK_ASSISTANT_PROMPTS = [
             <mat-card appearance="outlined" class="support-card" [class.low-support]="evaluation.level === 'Bajo'">
               <mat-card-header>
                 <mat-card-title>Soporte de la respuesta</mat-card-title>
-                <mat-card-subtitle>EstimaciÃ³n automÃ¡tica basada en las publicaciones citadas y en el texto generado.</mat-card-subtitle>
+                <mat-card-subtitle>Estimación automática basada en las publicaciones citadas y en el texto generado.</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
                 <div class="support-evaluation-header">
-                  <p>Esta ayuda orienta la revisiÃ³n, pero no sustituye una lectura humana de las fuentes.</p>
+                  <p>Esta ayuda orienta la revisión, pero no sustituye una lectura humana de las fuentes.</p>
                   <span class="support-level" [class.high]="evaluation.level === 'Alto'" [class.medium]="evaluation.level === 'Medio'" [class.low]="evaluation.level === 'Bajo'">
                     {{ evaluation.level }}
                   </span>
@@ -523,7 +523,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
             <mat-card appearance="outlined" class="technical-card">
               <mat-card-content>
                 <details class="technical-details">
-                  <summary>Detalles tÃ©cnicos</summary>
+                  <summary>Detalles técnicos</summary>
                   <div class="summary-grid technical-grid">
                     <div>
                       <span>Visibilidad</span>
@@ -538,7 +538,7 @@ const FALLBACK_ASSISTANT_PROMPTS = [
                       <strong>{{ context.provider }} / {{ context.model }}</strong>
                     </div>
                     <div>
-                      <span>Coincidencia mÃ­nima</span>
+                      <span>Coincidencia mínima</span>
                       <strong>{{ context.minSimilarity }}</strong>
                     </div>
                   </div>
@@ -1295,9 +1295,9 @@ export class CopilotPageComponent implements OnInit {
       return 'Ya hemos reunido publicaciones relacionadas. Cuando quieras, genera la respuesta.';
     }
     if (this.phase() === 'error') {
-      return 'Revisa la consulta o intÃ©ntalo de nuevo.';
+      return 'Revisa la consulta o inténtalo de nuevo.';
     }
-    return 'Escribe una pregunta y el asistente prepararÃ¡ una respuesta con publicaciones pÃºblicas revisadas.';
+    return 'Escribe una pregunta y el asistente preparará una respuesta con publicaciones públicas revisadas.';
   }
 
   phaseLabel(): string {
@@ -1322,30 +1322,30 @@ export class CopilotPageComponent implements OnInit {
   phaseDescription(): string {
     switch (this.phase()) {
       case 'preparing':
-        return 'Estamos preparando la consulta para buscar la informaciÃ³n mÃ¡s relevante.';
+        return 'Estamos preparando la consulta para buscar la información más relevante.';
       case 'retrieving':
-        return 'El asistente estÃ¡ reuniendo publicaciones pÃºblicas relacionadas con tu pregunta.';
+        return 'El asistente está reuniendo publicaciones públicas relacionadas con tu pregunta.';
       case 'contextReady':
         return 'Ya hay fuentes preparadas. Puedes revisar el contexto o pedir la respuesta.';
       case 'answering':
-        return 'Ahora se estÃ¡ redactando una respuesta a partir de las publicaciones encontradas.';
+        return 'Ahora se está redactando una respuesta a partir de las publicaciones encontradas.';
       case 'ready':
-        return 'La respuesta ya estÃ¡ lista y las publicaciones citadas aparecen justo debajo.';
+        return 'La respuesta ya está lista y las publicaciones citadas aparecen justo debajo.';
       case 'error':
-        return 'No pudimos completar la consulta. Ajusta la pregunta o intÃ©ntalo otra vez.';
+        return 'No pudimos completar la consulta. Ajusta la pregunta o inténtalo otra vez.';
       default:
-        return 'Cuando envÃ­es una pregunta, aquÃ­ verÃ¡s cÃ³mo avanza la consulta.';
+        return 'Cuando envíes una pregunta, aquí verás cómo avanza la consulta.';
     }
   }
 
   retrievalLabel(method: string): string {
     switch (method) {
       case 'SEMANTIC':
-        return 'BÃºsqueda semÃ¡ntica';
+        return 'Búsqueda semántica';
       case 'MOCK':
-        return 'Modo de demostraciÃ³n';
+        return 'Modo de demostración';
       case 'TEXT':
-        return 'BÃºsqueda por texto';
+        return 'Búsqueda por texto';
       default:
         return method;
     }
@@ -1354,9 +1354,9 @@ export class CopilotPageComponent implements OnInit {
   retrievalModeLabel(mode: RetrievalMode): string {
     switch (mode) {
       case 'STRICT':
-        return 'MÃ¡s precisa';
+        return 'Más precisa';
       case 'BROAD':
-        return 'MÃ¡s amplia';
+        return 'Más amplia';
       case 'BALANCED':
         return 'Equilibrada';
     }
@@ -1372,7 +1372,7 @@ export class CopilotPageComponent implements OnInit {
 
   retrievedContextCountLabel(): string {
     const count = this.contextPublications().length;
-    return count === 1 ? '1 publicaciÃ³n recuperada' : `${count} publicaciones recuperadas`;
+    return count === 1 ? '1 publicación recuperada' : `${count} publicaciones recuperadas`;
   }
 
   toggleFullContext(): void {
@@ -1390,7 +1390,7 @@ export class CopilotPageComponent implements OnInit {
   citationAriaLabel(segment: AnswerSegment): string {
     return segment.citationIndex === null
       ? 'Cita no disponible'
-      : `Ir a la publicaciÃ³n citada ${segment.citationIndex}`;
+      : `Ir a la publicación citada ${segment.citationIndex}`;
   }
 
   citedPublicationCardId(publicationId: number): string {
@@ -1494,7 +1494,7 @@ export class CopilotPageComponent implements OnInit {
       const body = error.error as { message?: string } | null;
       const message = body?.message ?? '';
       if (message.toLowerCase().includes('ollama')) {
-        return 'Ollama no estÃ¡ disponible.';
+        return 'Ollama no está disponible.';
       }
       return message || fallback;
     }

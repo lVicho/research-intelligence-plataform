@@ -67,13 +67,13 @@ const MODE_CONFIGURATION: Record<ExpertFinderMode, ModeConfiguration> = {
   },
   BALANCED: {
     label: 'Equilibrado',
-    helper: 'Combina precisiÃ³n y cobertura para devolver perfiles pÃºblicos consistentes.',
+    helper: 'Combina precisión y cobertura para devolver perfiles públicos consistentes.',
     minSimilarity: 0.4,
     limit: 12
   },
   BROAD: {
     label: 'Amplio',
-    helper: 'Abre la bÃºsqueda para explorar afinidades temÃ¡ticas mÃ¡s abiertas.',
+    helper: 'Abre la búsqueda para explorar afinidades temáticas más abiertas.',
     minSimilarity: 0.25,
     limit: 16
   }
@@ -81,10 +81,10 @@ const MODE_CONFIGURATION: Record<ExpertFinderMode, ModeConfiguration> = {
 
 const FALLBACK_EXPERT_QUERY_EXAMPLES = [
   'IA local en hospitales',
-  'salud pÃºblica y clima urbano',
-  'grafos de conocimiento y genÃ³mica',
-  'biodiversidad y corredores ecolÃ³gicos',
-  'colaboraciÃ³n cientÃ­fica en salud digital'
+  'salud pública y clima urbano',
+  'grafos de conocimiento y genómica',
+  'biodiversidad y corredores ecológicos',
+  'colaboración científica en salud digital'
 ];
 
 @Component({
@@ -109,18 +109,18 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
   template: `
     <section class="page expert-finder-page">
       <rip-page-header
-        title="GuÃ­a de expertos"
+        title="Guía de expertos"
         [subtitle]="headerSubtitle()"
-        eyebrow="Portal pÃºblico"
+        eyebrow="Portal público"
       />
 
       <section class="surface-intro">
-        <p class="section-kicker">BÃºsqueda guiada</p>
+        <p class="section-kicker">Búsqueda guiada</p>
         <div class="intro-grid">
           <div>
-            <h2>Encuentra perfiles pÃºblicos a partir de una pregunta, una lÃ­nea temÃ¡tica o un problema concreto.</h2>
+            <h2>Encuentra perfiles públicos a partir de una pregunta, una línea temática o un problema concreto.</h2>
             <p>
-              La guÃ­a combina bÃºsqueda semÃ¡ntica y seÃ±ales pÃºblicas del perfil del investigador para sugerir
+              La guía combina búsqueda semántica y señales públicas del perfil del investigador para sugerir
               expertos con evidencias concretas.
             </p>
           </div>
@@ -139,14 +139,14 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
               <input
                 matInput
                 formControlName="query"
-                placeholder="Ej. salud pÃºblica y clima urbano"
+                placeholder="Ej. salud pública y clima urbano"
               >
-              <mat-hint>Describe un tema, reto o contexto de investigaciÃ³n.</mat-hint>
+              <mat-hint>Describe un tema, reto o contexto de investigación.</mat-hint>
             </mat-form-field>
 
             <div class="mode-block">
               <span class="control-label">Modo</span>
-              <mat-button-toggle-group formControlName="mode" aria-label="Modo de bÃºsqueda">
+              <mat-button-toggle-group formControlName="mode" aria-label="Modo de búsqueda">
                 <mat-button-toggle value="STRICT">Estricto</mat-button-toggle>
                 <mat-button-toggle value="BALANCED">Equilibrado</mat-button-toggle>
                 <mat-button-toggle value="BROAD">Amplio</mat-button-toggle>
@@ -203,12 +203,12 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
       } @else if (!hasSearched()) {
         <rip-empty-state
           title="Empieza con una consulta"
-          message="Prueba una pregunta temÃ¡tica o usa uno de los ejemplos para encontrar expertos con evidencias pÃºblicas."
+          message="Prueba una pregunta temática o usa uno de los ejemplos para encontrar expertos con evidencias públicas."
         />
       } @else if (results().length === 0) {
         <rip-empty-state
           title="Sin coincidencias visibles"
-          message="No se encontraron expertos pÃºblicos con esta combinaciÃ³n de consulta, modo y filtros."
+          message="No se encontraron expertos públicos con esta combinación de consulta, modo y filtros."
         />
       } @else {
         <section class="results-summary">
@@ -217,7 +217,7 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
             <h3>{{ results().length }} expertos sugeridos en modo {{ selectedModeConfig().label.toLowerCase() }}</h3>
           </div>
           <p>
-            Las tarjetas muestran afinidad estimada a partir de publicaciones, temas pÃºblicos y afiliaciÃ³n
+            Las tarjetas muestran afinidad estimada a partir de publicaciones, temas públicos y afiliación
             visible.
           </p>
         </section>
@@ -245,7 +245,7 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
               </div>
 
               <section class="detail-block">
-                <h4>Temas pÃºblicos</h4>
+                <h4>Temas públicos</h4>
                 <div class="chip-list">
                   @for (topic of expert.topics; track topic) {
                     <rip-tag-chip [label]="topic" />
@@ -259,22 +259,22 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
                 <h4>Publicaciones de evidencia</h4>
                 <div class="evidence-list">
                   @for (publication of expert.evidencePublications; track publication.id) {
-                    <a class="evidence-item" [routerLink]="['/publications', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guÃ­a de expertos')">
+                    <a class="evidence-item" [routerLink]="['/portal/publicaciones', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guía de expertos')">
                       <strong>{{ publication.title }}</strong>
-                      <span>{{ publication.year || 's. f.' }} Â· {{ similarityLabel(publication.similarityScore) }}</span>
+                      <span>{{ publication.year || 's. f.' }} · {{ similarityLabel(publication.similarityScore) }}</span>
                     </a>
                   }
                 </div>
               </section>
 
               <section class="detail-block">
-                <h4>ExplicaciÃ³n</h4>
+                <h4>Explicación</h4>
                 <p class="explanation">{{ expert.explanation }}</p>
               </section>
 
               <div class="card-actions">
-                <a mat-stroked-button [routerLink]="['/portal/investigadores', expert.researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guÃ­a de expertos')">
-                  Ver perfil pÃºblico
+                <a mat-stroked-button [routerLink]="['/portal/investigadores', expert.researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guía de expertos')">
+                  Ver perfil público
                 </a>
               </div>
             </article>
@@ -593,8 +593,8 @@ export class ExpertFinderPageComponent implements OnInit {
   readonly selectedMode = signal<ExpertFinderMode>('BALANCED');
   readonly selectedModeConfig = computed(() => MODE_CONFIGURATION[this.selectedMode()]);
   readonly headerSubtitle = computed(() => this.hasSearched()
-    ? `${this.results().length} perfiles sugeridos con evidencia pÃºblica`
-    : 'Localiza expertos a partir de publicaciones, temas y afinidad semÃ¡ntica visibles en el portal.');
+    ? `${this.results().length} perfiles sugeridos con evidencia pública`
+    : 'Localiza expertos a partir de publicaciones, temas y afinidad semántica visibles en el portal.');
   readonly exampleQueryCaption = computed(() => this.exampleQueriesDynamic() ? 'Inspiradas en los datos del portal' : '');
 
   readonly searchForm = new FormGroup({
@@ -688,11 +688,11 @@ export class ExpertFinderPageComponent implements OnInit {
   affiliationLabel(researcher: Researcher): string {
     return researcher.primaryAffiliation?.researchUnitName
       ?? researcher.currentAffiliations[0]?.researchUnitName
-      ?? 'AfiliaciÃ³n pÃºblica no disponible';
+      ?? 'Afiliación pública no disponible';
   }
 
   evidenceLabel(count: number): string {
-    return count === 1 ? '1 publicaciÃ³n de evidencia' : `${count} publicaciones de evidencia`;
+    return count === 1 ? '1 publicación de evidencia' : `${count} publicaciones de evidencia`;
   }
 
   similarityLabel(score: number): string {
@@ -746,7 +746,7 @@ export class ExpertFinderPageComponent implements OnInit {
         error: () => {
           this.results.set([]);
           this.loading.set(false);
-          this.errorMessage.set('No se pudo cargar la guÃ­a de expertos en este momento.');
+          this.errorMessage.set('No se pudo cargar la guía de expertos en este momento.');
         }
       });
   }
@@ -983,10 +983,10 @@ export class ExpertFinderPageComponent implements OnInit {
   ): string {
     const affiliation = this.affiliationLabel(researcher);
     const topicText = topics.length > 0
-      ? ` Temas pÃºblicos mÃ¡s cercanos: ${topics.slice(0, 3).join(', ')}.`
+      ? ` Temas públicos más cercanos: ${topics.slice(0, 3).join(', ')}.`
       : '';
 
-    return `Modo ${MODE_CONFIGURATION[mode].label}: ${evidencePublications.length} ${evidencePublications.length === 1 ? 'publicaciÃ³n conecta' : 'publicaciones conectan'} la consulta con ${affiliation}.${topicText}`;
+    return `Modo ${MODE_CONFIGURATION[mode].label}: ${evidencePublications.length} ${evidencePublications.length === 1 ? 'publicación conecta' : 'publicaciones conectan'} la consulta con ${affiliation}.${topicText}`;
   }
 
   private confidenceLabel(score: number, mode: ExpertFinderMode): string {

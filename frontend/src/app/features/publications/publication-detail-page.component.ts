@@ -92,9 +92,9 @@ type AuthorFormGroup = FormGroup<{
   template: `
     <section class="page publication-page">
       <rip-page-header
-        [title]="publicationId() === null ? 'Nueva publicacion' : (currentPublication()?.title || 'Detalle de publicacion')"
-        [subtitle]="publicationId() === null ? 'Registra una publicacion con metadatos, autoria y validacion listos para trabajar.' : publicationSubtitle()"
-        eyebrow="Produccion cientifica"
+        [title]="publicationId() === null ? 'Nueva publicación' : (currentPublication()?.title || 'Detalle de publicación')"
+        [subtitle]="publicationId() === null ? 'Registra una publicación con metadatos, autoría y validación listos para trabajar.' : publicationSubtitle()"
+        eyebrow="Producción científica"
       >
         <button mat-button type="button" (click)="navigateBack()">{{ backLabel() }}</button>
         @if (showPublicationExplanationAction()) {
@@ -150,11 +150,11 @@ type AuthorFormGroup = FormGroup<{
                 <strong>{{ statusLabel(publication.status) }}</strong>
               </div>
               <div class="metadata-item">
-                <span>Estado de validacion</span>
+                <span>Estado de validación</span>
                 <strong>{{ validationLabel(publication.validationStatus) }}</strong>
               </div>
               <div class="metadata-item">
-                <span>Fecha de publicacion</span>
+                <span>Fecha de publicación</span>
                 <strong>{{ publicationDateLabel(publication) }}</strong>
               </div>
               <div class="metadata-item">
@@ -175,7 +175,7 @@ type AuthorFormGroup = FormGroup<{
               <section class="validation-banner" [class.warning-banner]="publication.validationStatus === 'CHANGES_REQUESTED'">
                 <div>
                   <span class="banner-label">
-                    {{ publication.validationStatus === 'CHANGES_REQUESTED' ? 'Requiere cambios' : 'Validacion' }}
+                    {{ publication.validationStatus === 'CHANGES_REQUESTED' ? 'Requiere cambios' : 'Validación' }}
                   </span>
                   <p class="banner-title">{{ validationHeadline(publication.validationStatus) }}</p>
                   <p class="banner-copy">{{ publication.validationComment || validationHelpCopy(publication.validationStatus) }}</p>
@@ -204,7 +204,7 @@ type AuthorFormGroup = FormGroup<{
 
             @if (publication.publicSummary) {
               <div class="text-block">
-                <h3>Resumen publico</h3>
+                <h3>Resumen público</h3>
                 <p>{{ publication.publicSummary }}</p>
               </div>
             }
@@ -227,7 +227,7 @@ type AuthorFormGroup = FormGroup<{
                       </div>
                     </div>
                   } @empty {
-                    <rip-empty-state title="Sin autores" message="Esta publicacion no tiene autores registrados." />
+                    <rip-empty-state title="Sin autores" message="Esta publicación no tiene autores registrados." />
                   }
                 </div>
               </div>
@@ -255,8 +255,8 @@ type AuthorFormGroup = FormGroup<{
           [targetSubtitle]="publicationSubtitle()"
           [currentSummary]="currentPublication()!.publicSummary"
           [ownerResearcherName]="ownerResearcherName()"
-          entityLabel="Publicacion"
-          currentSummaryLabel="Resumen publico actual"
+          entityLabel="Publicación"
+          currentSummaryLabel="Resumen público actual"
           [allowGeneration]="showPublicSummaryWorkflow()"
           [allowReviewExisting]="showPublicSummaryWorkflow()"
           (summaryApplied)="applyAcceptedPublicSummary($event)"
@@ -283,7 +283,7 @@ type AuthorFormGroup = FormGroup<{
                 </div>
                 <div class="section-grid">
                   <mat-form-field appearance="outline" class="wide-field">
-                    <mat-label>Titulo</mat-label>
+                    <mat-label>Título</mat-label>
                     <input matInput formControlName="title">
                     <mat-hint>Obligatorio</mat-hint>
                   </mat-form-field>
@@ -312,7 +312,7 @@ type AuthorFormGroup = FormGroup<{
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
-                    <mat-label>Fecha de publicacion</mat-label>
+                    <mat-label>Fecha de publicación</mat-label>
                     <input matInput type="date" formControlName="publicationDate">
                   </mat-form-field>
 
@@ -327,7 +327,7 @@ type AuthorFormGroup = FormGroup<{
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" class="wide-field">
-                    <mat-label>Resumen publico</mat-label>
+                    <mat-label>Resumen público</mat-label>
                     <textarea matInput rows="4" formControlName="publicSummary"></textarea>
                   </mat-form-field>
                 </div>
@@ -389,7 +389,7 @@ type AuthorFormGroup = FormGroup<{
               <section class="form-section">
                 <div class="section-heading">
                   <h3>Autores y entidades</h3>
-                  <p>Gestiona autoria interna y externa con orden y correspondencia.</p>
+                  <p>Gestiona autoría interna y externa con orden y correspondencia.</p>
                 </div>
 
                 <div class="author-toolbar">
@@ -441,7 +441,7 @@ type AuthorFormGroup = FormGroup<{
                           </mat-form-field>
 
                           <mat-form-field appearance="outline">
-                            <mat-label>Afiliacion externa</mat-label>
+                            <mat-label>Afiliación externa</mat-label>
                             <input matInput formControlName="externalAffiliation">
                           </mat-form-field>
                         }
@@ -472,8 +472,8 @@ type AuthorFormGroup = FormGroup<{
                   [requested]="topicSuggestionRequested()"
                   [suggestions]="topicSuggestions()"
                   [appliedTopics]="acceptedTopicSuggestions()"
-                  advisoryNote="Estas sugerencias no cambian la publicacion por si solas. Guardalas cuando quieras conservarlas y despues sigue la validacion normal."
-                  appliedHelper="Los temas aceptados ya estan en el borrador actual."
+                  advisoryNote="Estas sugerencias no cambian la publicación por sí solas. Guárdalas cuando quieras conservarlas y después sigue la validación normal."
+                  appliedHelper="Los temas aceptados ya están en el borrador actual."
                   (requestSuggestions)="requestTopicSuggestions()"
                   (applySelectedTopics)="acceptTopicSuggestions($event)"
                 />
@@ -481,30 +481,30 @@ type AuthorFormGroup = FormGroup<{
 
               <section class="form-section">
                 <div class="section-heading">
-                  <h3>Visibilidad y validacion</h3>
+                  <h3>Visibilidad y validación</h3>
                   <p>Campos de flujo visibles en solo lectura para decidir si toca editar o reenviar.</p>
                 </div>
                 <div class="status-grid">
                   <div class="status-panel">
-                    <span>Estado de validacion</span>
+                    <span>Estado de validación</span>
                     <strong>{{ currentPublication() ? validationLabel(currentPublication()!.validationStatus) : 'Borrador' }}</strong>
-                    <p>{{ currentPublication() ? validationHelpCopy(currentPublication()!.validationStatus) : 'Se asignara cuando el registro exista.' }}</p>
+                    <p>{{ currentPublication() ? validationHelpCopy(currentPublication()!.validationStatus) : 'Se asignará cuando el registro exista.' }}</p>
                   </div>
                   <div class="status-panel">
-                    <span>Ultimo envio</span>
-                    <strong>{{ formatOptionalDateTime(currentPublication()?.submittedAt, 'Sin envio') }}</strong>
-                    <p>{{ currentPublication()?.submittedBy || 'Aun no se ha registrado un envio.' }}</p>
+                    <span>Ultimo envío</span>
+                    <strong>{{ formatOptionalDateTime(currentPublication()?.submittedAt, 'Sin envío') }}</strong>
+                    <p>{{ currentPublication()?.submittedBy || 'Aún no se ha registrado un envío.' }}</p>
                   </div>
                   <div class="status-panel">
-                    <span>Ultima revision</span>
+                    <span>Última revisión</span>
                     <strong>{{ formatOptionalDateTime(currentPublication()?.validatedAt, 'Pendiente') }}</strong>
-                    <p>{{ currentPublication()?.validatedBy || 'Todavia no hay validacion cerrada.' }}</p>
+                    <p>{{ currentPublication()?.validatedBy || 'Todavía no hay validación cerrada.' }}</p>
                   </div>
                 </div>
 
                 @if (currentPublication()?.validationComment) {
                   <div class="readonly-note" [class.warning-note]="currentPublication()?.validationStatus === 'CHANGES_REQUESTED'">
-                    <span>Comentario de validacion</span>
+                    <span>Comentario de validación</span>
                     <p>{{ currentPublication()?.validationComment }}</p>
                   </div>
                 }
@@ -545,7 +545,7 @@ type AuthorFormGroup = FormGroup<{
           [entityType]="'PUBLICATION'"
           [entityId]="currentPublication()!.id"
           title="Historial"
-          subtitle="Seguimiento de cambios y transiciones de estado de la publicacion."
+          subtitle="Seguimiento de cambios y transiciones de estado de la publicación."
         />
       }
 
@@ -557,7 +557,7 @@ type AuthorFormGroup = FormGroup<{
           <mat-card-content class="related-section">
             <div class="related-intro">
               <div class="related-intro-copy">
-                <p>Se calculan combinando similitud semantica, temas compartidos, autoria y cercania temporal.</p>
+                <p>Se calculan combinando similitud semántica, temas compartidos, autoría y cercanía temporal.</p>
                 <rip-visibility-note [message]="relatedVisibilityNote()" />
               </div>
 
@@ -609,7 +609,7 @@ type AuthorFormGroup = FormGroup<{
 
                   <div class="score-line">
                     @if (related.semanticScore !== null) {
-                      <span>Semantica {{ scoreLabel(related.semanticScore) }}</span>
+                      <span>Semántica {{ scoreLabel(related.semanticScore) }}</span>
                     }
                     <span>Metadatos {{ scoreLabel(related.metadataScore) }}</span>
                   </div>
@@ -1149,27 +1149,27 @@ export class PublicationDetailPageComponent implements OnInit {
       return '';
     }
     if (publication.validationStatus === 'PENDING_VALIDATION') {
-      return 'La publicacion esta en revision institucional. Mientras siga pendiente no admite cambios.';
+      return 'La publicación está en revisión institucional. Mientras siga pendiente no admite cambios.';
     }
     if (publication.validationStatus === 'VALIDATED') {
-      return 'La publicacion ya fue validada. Solo los borradores o registros con cambios solicitados pueden editarse.';
+      return 'La publicación ya fue validada. Solo los borradores o registros con cambios solicitados pueden editarse.';
     }
     if (publication.validationStatus === 'REJECTED') {
-      return 'La publicacion fue rechazada. Revisa el historial para conocer el motivo antes de continuar.';
+      return 'La publicación fue rechazada. Revisa el historial para conocer el motivo antes de continuar.';
     }
-    return 'No tienes permiso para editar esta publicacion en su estado actual.';
+    return 'No tienes permiso para editar esta publicación en su estado actual.';
   }
 
   publicationSubtitle(): string {
     const publication = this.currentPublication();
     if (!publication) {
-      return 'Registro de publicacion';
+      return 'Registro de publicación';
     }
     return [
       publication.publicationDate,
       publication.year ? String(publication.year) : null,
       this.selectedVenueName() || publication.source
-    ].filter(Boolean).join(' · ') || 'Registro de publicacion';
+    ].filter(Boolean).join(' · ') || 'Registro de publicación';
   }
 
   selectedVenueName(): string | null {
@@ -1195,13 +1195,13 @@ export class PublicationDetailPageComponent implements OnInit {
   validationHeadline(status: ValidationStatus): string {
     switch (status) {
       case 'CHANGES_REQUESTED':
-        return 'Hay cambios pendientes antes de reenviar la publicacion.';
+        return 'Hay cambios pendientes antes de reenviar la publicación.';
       case 'PENDING_VALIDATION':
-        return 'El registro esta en revision.';
+        return 'El registro está en revisión.';
       case 'VALIDATED':
-        return 'La publicacion ya esta validada.';
+        return 'La publicación ya está validada.';
       case 'REJECTED':
-        return 'La publicacion fue rechazada.';
+        return 'La publicación fue rechazada.';
       default:
         return 'El registro sigue en borrador.';
     }
@@ -1212,13 +1212,13 @@ export class PublicationDetailPageComponent implements OnInit {
       case 'CHANGES_REQUESTED':
         return 'Actualiza los campos observados y reenvia el registro cuando este completo.';
       case 'PENDING_VALIDATION':
-        return 'Puedes revisar la informacion, pero no editarla mientras dura la revision.';
+        return 'Puedes revisar la información, pero no editarla mientras dura la revisión.';
       case 'VALIDATED':
-        return 'Puedes consultar el historial para entender la validacion aplicada.';
+        return 'Puedes consultar el historial para entender la validación aplicada.';
       case 'REJECTED':
         return 'Consulta el historial y coordina el siguiente paso con el equipo validador.';
       default:
-        return 'Completa la informacion pendiente antes de enviar a validacion.';
+        return 'Completa la información pendiente antes de enviar a validación.';
     }
   }
 
@@ -1233,8 +1233,8 @@ export class PublicationDetailPageComponent implements OnInit {
 
   submitButtonLabel(): string {
     return this.currentPublication()?.validationStatus === 'CHANGES_REQUESTED'
-      ? 'Reenviar a validacion'
-      : 'Enviar a validacion';
+      ? 'Reenviar a validación'
+      : 'Enviar a validación';
   }
 
   requestPublicationExplanation(): void {
@@ -1412,11 +1412,16 @@ export class PublicationDetailPageComponent implements OnInit {
   publicationDetailLink(publicationId: number): string[] {
     return this.navigationContext.isCurrentPath('/admin/publicaciones')
       ? ['/admin/publicaciones', String(publicationId)]
+      : this.isPortalContext()
+        ? ['/portal/publicaciones', String(publicationId)]
       : ['/publications', String(publicationId)];
   }
 
   private fallbackBackPath(): string {
-    return this.navigationContext.isCurrentPath('/admin/publicaciones') ? '/admin/publicaciones' : '/publications';
+    if (this.navigationContext.isCurrentPath('/admin/publicaciones')) {
+      return '/admin/publicaciones';
+    }
+    return this.isPortalContext() ? '/portal/publicaciones' : '/publications';
   }
 
   private loadLookups(): void {
@@ -1461,7 +1466,7 @@ export class PublicationDetailPageComponent implements OnInit {
         error: (error: unknown) => {
           this.currentPublication.set(null);
           this.relatedResponse.set(null);
-          this.loadError.set(contentAccessErrorMessage(error, 'No se pudo cargar la publicacion.'));
+          this.loadError.set(contentAccessErrorMessage(error, 'No se pudo cargar la publicación.'));
           this.closePublicationExplanation();
         }
       });

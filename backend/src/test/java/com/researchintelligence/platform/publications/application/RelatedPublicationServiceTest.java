@@ -221,7 +221,7 @@ class RelatedPublicationServiceTest {
             .findFirst()
             .orElseThrow();
         assertTrue(panther.finalScore() < 0.25);
-        assertEquals("Relacion debil; revisa los motivos antes de usarla.", panther.warning());
+        assertEquals("Relación débil; revisa los motivos antes de usarla.", panther.warning());
     }
 
     @Test

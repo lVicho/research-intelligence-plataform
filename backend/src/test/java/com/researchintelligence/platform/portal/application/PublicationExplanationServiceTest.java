@@ -135,7 +135,7 @@ class PublicationExplanationServiceTest {
 
     @Test
     void nonValidatedPublicationIsNotExplainablePublicly() {
-        PublicationEntity publication = publication(10L, "Borrador no publico", "Resumen interno.");
+        PublicationEntity publication = publication(10L, "Borrador no público", "Resumen interno.");
         publication.setValidationStatus(ValidationStatus.PENDING_VALIDATION);
         when(publicationRepository.findById(10L)).thenReturn(Optional.of(publication));
 
@@ -150,8 +150,8 @@ class PublicationExplanationServiceTest {
         PublicationExplanationResponse response = service.explain(10L, new PublicationExplanationRequest(PublicationExplanationStyle.PLAIN, null));
 
         assertTrue(response.warnings().stream().anyMatch(warning -> warning.contains("no tiene resumen validado")));
-        assertTrue(response.warnings().stream().anyMatch(warning -> warning.contains("contexto publico validado es debil")));
-        assertTrue(response.approach().contains("No hay informacion metodologica separada"));
+        assertTrue(response.warnings().stream().anyMatch(warning -> warning.contains("contexto público validado es débil")));
+        assertTrue(response.approach().contains("No hay información metodológica separada"));
     }
 
     @Test
@@ -181,8 +181,8 @@ class PublicationExplanationServiceTest {
         assertFalse(response.problemAddressed().isBlank());
         assertFalse(response.whyItMatters().isBlank());
         assertFalse(response.approach().isBlank());
-        assertTrue(response.plainSummary().contains("publicacion validada"));
-        assertTrue(response.whyItMatters().contains("evidencia publica"));
+        assertTrue(response.plainSummary().contains("publicación validada"));
+        assertTrue(response.whyItMatters().contains("evidencia pública"));
     }
 
     private PublicationExplanationService service(LlmService llmService) {

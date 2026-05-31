@@ -7,13 +7,12 @@ import { catchError, forkJoin, map, of } from 'rxjs';
 
 import {
   PortalNewsArticle,
+  PortalPublicationDetail,
   PortalResearchUnitSummary,
-  PortalResearcherSummary,
-  Publication
+  PortalResearcherSummary
 } from '../../core/api/api-models';
 import { NewsApiService } from '../../core/api/news-api.service';
 import { PortalApiService } from '../../core/api/portal-api.service';
-import { PublicationsApiService } from '../../core/api/publications-api.service';
 import { NavigationContextService } from '../../core/navigation/navigation-context.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { ErrorStateComponent } from '../../shared/components/error-state.component';
@@ -27,7 +26,7 @@ interface RelatedPublicationCard {
   title: string;
   year: number | null;
   source: string | null;
-  type: Publication['type'];
+  type: PortalPublicationDetail['type'];
 }
 
 interface RelatedResearcherCard {
@@ -76,7 +75,7 @@ interface RelatedUnitCard {
           @if (article(); as currentArticle) {
             <section class="hero">
               <div class="hero-copy">
-                <p class="eyebrow">Portal publico</p>
+                <p class="eyebrow">Portal público</p>
                 <p class="hero-date">{{ dateLabel(currentArticle.publishedAt) }}</p>
                 <h1>{{ currentArticle.title }}</h1>
                 <p class="summary">{{ currentArticle.summary }}</p>
@@ -117,14 +116,14 @@ interface RelatedUnitCard {
                     @if (relatedPublications().length === 0) {
                       <rip-empty-state
                         title="Sin publicaciones relacionadas"
-                        message="Esta noticia no enlaza todavia con publicaciones visibles."
+                        message="Esta noticia no enlaza todavía con publicaciones visibles."
                       />
                     } @else {
                       <div class="stack-list">
                         @for (publication of relatedPublications(); track publication.id) {
                           <a
                             class="related-card"
-                            [routerLink]="['/publications', publication.id]"
+                            [routerLink]="['/portal/publicaciones', publication.id]"
                             [queryParams]="navigationContext.returnQueryParams('Volver a la noticia')"
                           >
                             <strong>{{ publication.title }}</strong>
@@ -150,7 +149,7 @@ interface RelatedUnitCard {
                     @if (relatedResearchers().length === 0) {
                       <rip-empty-state
                         title="Sin perfiles relacionados"
-                        message="No hay investigadores publicos asociados a esta noticia."
+                        message="No hay investigadores públicos asociados a esta noticia."
                       />
                     } @else {
                       <div class="stack-list">
@@ -161,7 +160,7 @@ interface RelatedUnitCard {
                             [queryParams]="navigationContext.returnQueryParams('Volver a la noticia')"
                           >
                             <strong>{{ researcher.name }}</strong>
-                            <p>{{ researcher.affiliation || 'Afiliacion publica pendiente de completar' }}</p>
+                            <p>{{ researcher.affiliation || 'Afiliación pública pendiente de completar' }}</p>
                           </a>
                         }
                       </div>
@@ -205,7 +204,7 @@ interface RelatedUnitCard {
               <mat-card-content>
                 <rip-empty-state
                   title="Noticia no disponible"
-                  message="Esta noticia ya no esta visible en el portal publico."
+                  message="Esta noticia ya no está visible en el portal público."
                 />
               </mat-card-content>
             </mat-card>
@@ -382,7 +381,6 @@ export class PortalNewsDetailPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly newsApi = inject(NewsApiService);
   private readonly portalApi = inject(PortalApiService);
-  private readonly publicationsApi = inject(PublicationsApiService);
   readonly navigationContext = inject(NavigationContextService);
 
   readonly loading = signal(true);
@@ -429,7 +427,7 @@ export class PortalNewsDetailPageComponent implements OnInit {
 
   dateLabel(value: string | null): string {
     if (!value) {
-      return 'Sin fecha de publicacion';
+      return 'Sin fecha de publicación';
     }
     return new Intl.DateTimeFormat('es-ES', {
       dateStyle: 'long',
@@ -437,7 +435,7 @@ export class PortalNewsDetailPageComponent implements OnInit {
     }).format(new Date(value));
   }
 
-  publicationTypeLabel(type: Publication['type']): string {
+  publicationTypeLabel(type: PortalPublicationDetail['type']): string {
     return publicationTypeLabel(type);
   }
 
@@ -446,7 +444,7 @@ export class PortalNewsDetailPageComponent implements OnInit {
   }
 
   unitLocation(unit: RelatedUnitCard): string {
-    return [unit.city, unit.country].filter(Boolean).join(', ') || 'Ubicacion publica no especificada';
+    return [unit.city, unit.country].filter(Boolean).join(', ') || 'Ubicación pública no especificada';
   }
 
   private loadRelated(article: PortalNewsArticle): void {
@@ -469,7 +467,7 @@ export class PortalNewsDetailPageComponent implements OnInit {
     }
     return forkJoin(
       ids.map((id) =>
-        this.publicationsApi.get(id).pipe(
+        this.portalApi.publication(id).pipe(
           map((publication) => ({
             id: publication.id,
             title: publication.title,

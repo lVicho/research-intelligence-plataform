@@ -160,7 +160,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
             <mat-card-content>
               <div class="publication-list">
                 @for (publication of detail.publications; track publication.id) {
-                  <a class="publication-card" [routerLink]="['/publications', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la unidad')">
+                  <a class="publication-card" [routerLink]="['/portal/publicaciones', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la unidad')">
                     <div class="publication-head">
                       <strong>{{ publication.title }}</strong>
                       <span>{{ publication.year || 's. f.' }}</span>
@@ -192,7 +192,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
                     <p>{{ activity.eventName || 'Actividad institucional' }}</p>
                     <span>{{ activity.participationDate || 'Fecha pendiente' }}</span>
                     @if (activity.relatedPublicationId) {
-                      <a class="subtle-link" [routerLink]="['/publications', activity.relatedPublicationId]" [queryParams]="navigationContext.returnQueryParams('Volver a la unidad')">
+                      <a class="subtle-link" [routerLink]="['/portal/publicaciones', activity.relatedPublicationId]" [queryParams]="navigationContext.returnQueryParams('Volver a la unidad')">
                         {{ activity.relatedPublicationTitle || 'Ver publicación relacionada' }}
                       </a>
                     }
@@ -205,7 +205,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           </mat-card>
         </section>
         } @else {
-          <rip-empty-state title="Unidad no disponible" message="Esta ficha ya no estÃ¡ visible en el portal pÃºblico." />
+          <rip-empty-state title="Unidad no disponible" message="Esta ficha ya no está visible en el portal público." />
         }
       }
     </section>

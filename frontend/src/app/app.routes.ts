@@ -41,6 +41,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/portal/portal-researcher-detail-page.component').then((m) => m.PortalResearcherDetailPageComponent)
       },
       {
+        path: 'publicaciones/:id',
+        loadComponent: () => import('./features/portal/portal-publication-detail-page.component').then((m) => m.PortalPublicationDetailPageComponent)
+      },
+      {
         path: 'publicaciones',
         data: { portalView: true },
         loadComponent: () => import('./features/publications/publications-page.component').then((m) => m.PublicationsPageComponent)
@@ -52,8 +56,8 @@ export const routes: Routes = [
       },
       {
         path: 'asistente',
-        data: { portalView: true },
-        loadComponent: () => import('./features/copilot/copilot-page.component').then((m) => m.CopilotPageComponent)
+        pathMatch: 'full',
+        redirectTo: '/portal'
       },
       {
         path: 'busqueda',
@@ -63,7 +67,7 @@ export const routes: Routes = [
       {
         path: 'copiloto',
         pathMatch: 'full',
-        redirectTo: 'asistente'
+        redirectTo: '/portal'
       },
       {
         path: 'mapa-estrategico',

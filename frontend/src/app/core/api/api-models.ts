@@ -167,6 +167,69 @@ export interface PortalActivitySummary {
   relatedPublicationTitle: string | null;
 }
 
+export interface PortalPublicationAuthor {
+  id: number;
+  researcherId: number | null;
+  name: string | null;
+  externalAffiliation: string | null;
+  authorOrder: number;
+  correspondingAuthor: boolean;
+  internal: boolean;
+  publicProfileAvailable: boolean;
+}
+
+export interface PortalPublicationLinkedResearcher {
+  id: number;
+  fullName: string;
+  displayName: string | null;
+  primaryAffiliationName: string | null;
+}
+
+export interface PortalPublicationLinkedUnit {
+  id: number;
+  name: string;
+  shortName: string | null;
+  type: ResearchUnitType;
+}
+
+export interface PortalPublicationTopic {
+  id: number;
+  name: string;
+  normalizedName: string;
+}
+
+export interface PortalPublicationDetail {
+  id: number;
+  title: string;
+  abstractText: string | null;
+  publicSummary: string | null;
+  year: number | null;
+  publicationDate: string | null;
+  type: PublicationType;
+  status: PublicationStatus;
+  doi: string | null;
+  source: string | null;
+  sourceDetail: string | null;
+  url: string | null;
+  venueId: number | null;
+  venueName: string | null;
+  publisherId: number | null;
+  publisherName: string | null;
+  isbn: string | null;
+  issn: string | null;
+  languageCode: string | null;
+  authors: PortalPublicationAuthor[];
+  internalResearchers: PortalPublicationLinkedResearcher[];
+  researchUnits: PortalPublicationLinkedUnit[];
+  externalOrganizations: string[];
+  topics: PortalPublicationTopic[];
+  relatedPublications: PublicationSummary[];
+  warnings: string[];
+  explanationAvailable: boolean;
+  visibilityScope: VisibilityScopeCode;
+  validationFilterApplied: boolean;
+}
+
 export interface PortalResearchUnitSummary {
   id: number;
   name: string;

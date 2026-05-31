@@ -269,7 +269,7 @@ const SECTION_LABELS = {
                   @for (publication of explanation.publications; track publication.id) {
                     <a
                       class="link-card publication-link-card"
-                      [routerLink]="['/publications', publication.id]"
+                      [routerLink]="['/portal/publicaciones', publication.id]"
                       [queryParams]="publicationDetailQueryParams()"
                     >
                       <div class="link-card-top">

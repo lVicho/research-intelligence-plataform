@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.researchintelligence.platform.portal.application.PortalDemoQueryService;
 import com.researchintelligence.platform.portal.application.PortalService;
 import com.researchintelligence.platform.portal.application.PublicationExplanationService;
+import com.researchintelligence.platform.publications.domain.PublicationStatus;
+import com.researchintelligence.platform.publications.domain.PublicationType;
+import com.researchintelligence.platform.shared.visibility.VisibilityScope;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -19,6 +22,56 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class PortalControllerTest {
+
+    @Test
+    void publicationDetailEndpointReturnsPublicContract() throws Exception {
+        PortalService portalService = mock(PortalService.class);
+        PortalDemoQueryService demoQueryService = mock(PortalDemoQueryService.class);
+        PublicationExplanationService explanationService = mock(PublicationExplanationService.class);
+        when(portalService.publicationDetail(10L)).thenReturn(new PortalPublicationDetailResponse(
+            10L,
+            "IA local para triaje hospitalario",
+            "Resumen tecnico validado.",
+            "Resumen publico.",
+            2026,
+            null,
+            PublicationType.ARTICLE,
+            PublicationStatus.PUBLISHED,
+            "10.123/demo",
+            "Revista Demo",
+            null,
+            "https://example.test/publication",
+            3L,
+            "Revista Demo",
+            4L,
+            "Editorial Demo",
+            null,
+            "1234-5678",
+            "es",
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(new PortalPublicationTopicResponse(7L, "IA clinica", "ia clinica")),
+            List.of(),
+            List.of(),
+            true,
+            VisibilityScope.PUBLIC_VALIDATED,
+            true
+        ));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
+            new PortalController(portalService, demoQueryService, explanationService)
+        ).build();
+
+        mockMvc.perform(get("/api/portal/publications/10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(10))
+            .andExpect(jsonPath("$.title").value("IA local para triaje hospitalario"))
+            .andExpect(jsonPath("$.validationFilterApplied").value(true))
+            .andExpect(jsonPath("$.visibilityScope").value("PUBLIC_VALIDATED"))
+            .andExpect(jsonPath("$.topics[0].label").doesNotExist())
+            .andExpect(jsonPath("$.topics[0].name").value("IA clinica"));
+    }
 
     @Test
     void publicationExplanationEndpointReturnsStructuredResponse() throws Exception {

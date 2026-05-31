@@ -80,11 +80,11 @@ const PUBLICATION_STATUSES: PublicationStatus[] = [
 ];
 
 const FALLBACK_SEMANTIC_EXAMPLES = [
-  'IA clÃ­nica en hospitales',
-  'colaboraciÃ³n interdisciplinar en salud digital',
-  'sostenibilidad urbana y salud pÃºblica',
-  'biodiversidad y corredores ecolÃ³gicos',
-  'grafos de conocimiento y genÃ³mica'
+  'IA clínica en hospitales',
+  'colaboración interdisciplinar en salud digital',
+  'sostenibilidad urbana y salud pública',
+  'biodiversidad y corredores ecológicos',
+  'grafos de conocimiento y genómica'
 ];
 
 @Component({
@@ -114,10 +114,10 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
       <rip-page-header
         title="Publicaciones"
         [subtitle]="pageSubtitle()"
-        [eyebrow]="isPortalView() ? 'Portal pÃºblico' : 'ProducciÃ³n cientÃ­fica'"
+        [eyebrow]="isPortalView() ? 'Portal público' : 'Producción científica'"
       >
         @if (canManageMasterData()) {
-          <a mat-flat-button color="primary" [routerLink]="newPublicationLink()">Nueva publicaciÃ³n</a>
+          <a mat-flat-button color="primary" [routerLink]="newPublicationLink()">Nueva publicación</a>
         }
       </rip-page-header>
 
@@ -127,14 +127,14 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
 
       <section class="portal-intro" [class.internal-intro]="!isPortalView()">
         <div class="intro-copy">
-          <p class="section-kicker">Descubrimiento pÃºblico</p>
-          <h2>Una sola bÃºsqueda para explorar publicaciones por campos o por significado.</h2>
+          <p class="section-kicker">Descubrimiento público</p>
+          <h2>Una sola búsqueda para explorar publicaciones por campos o por significado.</h2>
           <p>
-            Alterna entre coincidencia por campos y bÃºsqueda semÃ¡ntica sin cambiar de pÃ¡gina ni de componente de
+            Alterna entre coincidencia por campos y búsqueda semántica sin cambiar de página ni de componente de
             resultados.
           </p>
           @if (isPortalView()) {
-            <p class="portal-note">El portal muestra actividad pÃºblica revisada por la instituciÃ³n.</p>
+            <p class="portal-note">El portal muestra actividad pública revisada por la institución.</p>
           }
         </div>
 
@@ -147,7 +147,7 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
       <mat-card appearance="outlined" class="discovery-card">
         <mat-card-content>
           @if (masterDataLoading()) {
-            <p class="support-copy">Cargando filtros acadÃ©micos...</p>
+            <p class="support-copy">Cargando filtros académicos...</p>
           }
 
           @if (masterDataError()) {
@@ -160,23 +160,23 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
           <form class="search-form" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
             <div class="mode-row">
               <div class="mode-copy">
-                <p class="section-kicker">Modo de bÃºsqueda</p>
+                <p class="section-kicker">Modo de búsqueda</p>
                 <p class="support-copy">{{ modeHelperText() }}</p>
               </div>
 
               <mat-button-toggle-group
                 formControlName="mode"
-                aria-label="Modo de bÃºsqueda"
+                aria-label="Modo de búsqueda"
                 (change)="onModeChange()"
               >
                 <mat-button-toggle value="fields">Por campos</mat-button-toggle>
-                <mat-button-toggle value="semantic">SemÃ¡ntica</mat-button-toggle>
+                <mat-button-toggle value="semantic">Semántica</mat-button-toggle>
               </mat-button-toggle-group>
             </div>
 
             <div class="query-row">
               <mat-form-field appearance="outline" class="query-field">
-                <mat-label>BÃºsqueda principal</mat-label>
+                <mat-label>Búsqueda principal</mat-label>
                 <input
                   matInput
                   formControlName="query"
@@ -225,12 +225,12 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
               @if (showAdvancedFilters() || hasAdvancedFieldFilters()) {
                 <div class="advanced-filters">
                   <mat-form-field appearance="outline">
-                    <mat-label>AÃ±o desde</mat-label>
+                    <mat-label>Año desde</mat-label>
                     <input matInput type="number" formControlName="yearFrom" [placeholder]="metadata()?.minYear?.toString() || ''">
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
-                    <mat-label>AÃ±o hasta</mat-label>
+                    <mat-label>Año hasta</mat-label>
                     <input matInput type="number" formControlName="yearTo" [placeholder]="metadata()?.maxYear?.toString() || ''">
                   </mat-form-field>
 
@@ -298,15 +298,15 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
         <mat-card-content>
           <div class="results-toolbar">
             <div>
-              <p class="section-kicker">{{ searchMode() === 'semantic' ? 'Resultados semÃ¡nticos' : 'Resultados' }}</p>
+              <p class="section-kicker">{{ searchMode() === 'semantic' ? 'Resultados semánticos' : 'Resultados' }}</p>
               <div class="result-count">{{ resultsCount() }} {{ resultsCountLabel() }}</div>
               <p class="support-copy">{{ resultsHelperText() }}</p>
             </div>
 
             @if (searchMode() === 'fields') {
               <div class="sort-actions">
-                <button mat-button type="button" (click)="toggleSort('year')">AÃ±o {{ sortLabel('year') }}</button>
-                <button mat-button type="button" (click)="toggleSort('title')">TÃ­tulo {{ sortLabel('title') }}</button>
+                <button mat-button type="button" (click)="toggleSort('year')">Año {{ sortLabel('year') }}</button>
+                <button mat-button type="button" (click)="toggleSort('title')">Título {{ sortLabel('title') }}</button>
               </div>
             }
           </div>
@@ -377,7 +377,7 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
       @if (searchMode() === 'fields') {
         <div class="pagination">
           <button mat-button type="button" [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">Anterior</button>
-          <span>PÃ¡gina {{ currentPage() + 1 }} de {{ result()?.totalPages || 1 }}</span>
+          <span>Página {{ currentPage() + 1 }} de {{ result()?.totalPages || 1 }}</span>
           <button mat-button type="button" [disabled]="result()?.last ?? true" (click)="goToPage(currentPage() + 1)">Siguiente</button>
         </div>
       }
@@ -821,8 +821,8 @@ export class PublicationsPageComponent implements OnInit {
     }));
   });
   readonly pageSubtitle = computed(() => this.isPortalView()
-    ? 'Explora publicaciones con una experiencia pÃºblica unificada de bÃºsqueda y resultados.'
-    : 'Busca por campos o por afinidad semÃ¡ntica dentro del catÃ¡logo institucional.');
+    ? 'Explora publicaciones con una experiencia pública unificada de búsqueda y resultados.'
+    : 'Busca por campos o por afinidad semántica dentro del catálogo institucional.');
   readonly pageVisibilityNote = computed(() => this.isPortalView() ? publicVisibilityNote() : visibilityNoteForUser(this.auth.currentUser()));
   readonly resultsCount = computed(() => this.searchMode() === 'semantic'
     ? this.semanticResults().length
@@ -992,7 +992,7 @@ export class PublicationsPageComponent implements OnInit {
     if (this.sortBy() !== sortBy) {
       return '';
     }
-    return this.sortDirection() === 'asc' ? 'â†‘' : 'â†“';
+    return this.sortDirection() === 'asc' ? '↑' : '↓';
   }
 
   goToPage(page: number): void {
@@ -1046,33 +1046,33 @@ export class PublicationsPageComponent implements OnInit {
 
   emptyStateMessage(): string {
     return this.searchMode() === 'semantic'
-      ? 'No se han encontrado publicaciones semÃ¡nticamente cercanas.'
+      ? 'No se han encontrado publicaciones semánticamente cercanas.'
       : 'No se han encontrado publicaciones con esos filtros.';
   }
 
   resultsCountLabel(): string {
     if (this.searchMode() === 'semantic') {
-      return this.resultsCount() === 1 ? 'resultado semÃ¡ntico' : 'resultados semÃ¡nticos';
+      return this.resultsCount() === 1 ? 'resultado semántico' : 'resultados semánticos';
     }
-    return this.resultsCount() === 1 ? 'publicaciÃ³n encontrada' : 'publicaciones encontradas';
+    return this.resultsCount() === 1 ? 'publicación encontrada' : 'publicaciones encontradas';
   }
 
   resultsHelperText(): string {
     return this.searchMode() === 'semantic'
-      ? 'Los resultados se muestran en las mismas tarjetas y se ordenan por afinidad semÃ¡ntica.'
-      : 'La lista reÃºne coincidencias por campos y mantiene los filtros avanzados como apoyo secundario.';
+      ? 'Los resultados se muestran en las mismas tarjetas y se ordenan por afinidad semántica.'
+      : 'La lista reúne coincidencias por campos y mantiene los filtros avanzados como apoyo secundario.';
   }
 
   modeHelperText(): string {
     return this.searchMode() === 'semantic'
       ? 'Describe una idea, una pregunta o un concepto para recuperar publicaciones cercanas por significado.'
-      : 'Usa coincidencia por campos cuando quieras combinar texto libre con filtros bibliogrÃ¡ficos mÃ¡s precisos.';
+      : 'Usa coincidencia por campos cuando quieras combinar texto libre con filtros bibliográficos más precisos.';
   }
 
   queryFieldHint(): string {
     return this.searchMode() === 'semantic'
-      ? 'La bÃºsqueda semÃ¡ntica interpreta intenciÃ³n y contexto en la misma lista de resultados.'
-      : 'Busca por texto y apÃ³yate en filtros avanzados si necesitas acotar por aÃ±o, tipo, unidad o tema.';
+      ? 'La búsqueda semántica interpreta intención y contexto en la misma lista de resultados.'
+      : 'Busca por texto y apóyate en filtros avanzados si necesitas acotar por año, tipo, unidad o tema.';
   }
 
   hasAdvancedFieldFilters(value?: {
@@ -1120,6 +1120,8 @@ export class PublicationsPageComponent implements OnInit {
   publicationLink(publicationId: number): string[] {
     return this.navigationContext.isCurrentPath('/admin/publicaciones')
       ? ['/admin/publicaciones', String(publicationId)]
+      : this.isPortalView()
+        ? ['/portal/publicaciones', String(publicationId)]
       : ['/publications', String(publicationId)];
   }
 
@@ -1239,7 +1241,7 @@ export class PublicationsPageComponent implements OnInit {
         error: () => {
           this.semanticResults.set([]);
           this.semanticLoading.set(false);
-          this.semanticError.set('No se pudo ejecutar la bÃºsqueda semÃ¡ntica.');
+          this.semanticError.set('No se pudo ejecutar la búsqueda semántica.');
         }
       });
   }

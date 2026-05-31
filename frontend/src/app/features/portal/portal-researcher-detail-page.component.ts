@@ -152,7 +152,7 @@ import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
             <mat-card-content>
               <div class="publication-list">
                 @for (publication of detail.publications; track publication.id) {
-                  <a class="publication-card" [routerLink]="['/publications', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver al investigador')">
+                  <a class="publication-card" [routerLink]="['/portal/publicaciones', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver al investigador')">
                     <div class="publication-head">
                       <strong>{{ publication.title }}</strong>
                       <span>{{ publication.year || 's. f.' }}</span>
@@ -184,7 +184,7 @@ import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
                     <p>{{ activity.eventName || 'Actividad institucional' }}</p>
                     <span>{{ activity.participationDate || 'Fecha pendiente' }}</span>
                     @if (activity.relatedPublicationId) {
-                      <a class="subtle-link" [routerLink]="['/publications', activity.relatedPublicationId]" [queryParams]="navigationContext.returnQueryParams('Volver al investigador')">
+                      <a class="subtle-link" [routerLink]="['/portal/publicaciones', activity.relatedPublicationId]" [queryParams]="navigationContext.returnQueryParams('Volver al investigador')">
                         {{ activity.relatedPublicationTitle || 'Ver publicación relacionada' }}
                       </a>
                     }
@@ -233,7 +233,7 @@ import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
           </mat-card>
         }
         } @else {
-          <rip-empty-state title="Perfil no disponible" message="Este perfil ya no estÃ¡ visible en el portal pÃºblico." />
+          <rip-empty-state title="Perfil no disponible" message="Este perfil ya no está visible en el portal público." />
         }
       }
     </section>

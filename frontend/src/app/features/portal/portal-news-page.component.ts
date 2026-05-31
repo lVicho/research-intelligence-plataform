@@ -38,24 +38,24 @@ interface NewsFilters {
     <section class="page portal-news-page">
       <rip-page-header
         title="Noticias"
-        subtitle="Una seleccion editorial de actividad institucional validada, conectada con publicaciones, personas y unidades del portal."
-        eyebrow="Portal publico"
+        subtitle="Una selección editorial de actividad institucional validada, conectada con publicaciones, personas y unidades del portal."
+        eyebrow="Portal público"
       />
 
       <section class="surface-intro intro-band">
         <div class="intro-copy">
           <p class="section-kicker">Actualidad institucional</p>
-          <h2>Historias breves para recorrer la investigacion desde un angulo mas editorial.</h2>
+          <h2>Historias breves para recorrer la investigación desde un ángulo más editorial.</h2>
           <p>
             Cada noticia enlaza con evidencia visible en el portal para que puedas seguir la pista hacia personas,
-            unidades y produccion cientifica relacionada.
+            unidades y producción científica relacionada.
           </p>
         </div>
 
         <form class="search-panel" [formGroup]="filterForm" (ngSubmit)="applyFilters()">
           <mat-form-field appearance="outline">
             <mat-label>Buscar noticias</mat-label>
-            <input matInput formControlName="text" placeholder="Titulo, resumen o tema institucional">
+            <input matInput formControlName="text" placeholder="Título, resumen o tema institucional">
           </mat-form-field>
           <div class="search-actions">
             <button mat-flat-button color="primary" type="submit">Buscar</button>
@@ -88,7 +88,7 @@ interface NewsFilters {
             <mat-card-content>
               <rip-empty-state
                 title="Sin noticias visibles"
-                message="Todavia no hay noticias publicadas para esta busqueda en el portal."
+                message="Todavía no hay noticias publicadas para esta búsqueda en el portal."
               />
             </mat-card-content>
           </mat-card>
@@ -124,7 +124,7 @@ interface NewsFilters {
             <button mat-button type="button" (click)="goToPage(result().page - 1)" [disabled]="result().page === 0">
               Anterior
             </button>
-            <span>Pagina {{ result().page + 1 }} de {{ maxPageLabel() }}</span>
+            <span>Página {{ result().page + 1 }} de {{ maxPageLabel() }}</span>
             <button
               mat-button
               type="button"
@@ -349,7 +349,7 @@ export class PortalNewsPageComponent implements OnInit {
         error: () => {
           this.result.set(this.emptyPage());
           this.loading.set(false);
-          this.errorMessage.set('No se pudieron cargar las noticias publicas.');
+          this.errorMessage.set('No se pudieron cargar las noticias públicas.');
         }
       });
   }
@@ -379,7 +379,7 @@ export class PortalNewsPageComponent implements OnInit {
 
   dateLabel(value: string | null): string {
     if (!value) {
-      return 'Sin fecha de publicacion';
+      return 'Sin fecha de publicación';
     }
     return new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(new Date(value));
   }
