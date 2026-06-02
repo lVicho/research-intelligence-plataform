@@ -70,6 +70,19 @@ Consultas utiles para probar separacion semantica:
 - `grafos de conocimiento en genomica`
 - `calidad de datos en investigacion`
 
+## Noticias Publicas Demo
+
+La migracion `backend/src/main/resources/db/migration/V26__add_published_demo_news.sql` añade cuatro noticias demo publicadas para el portal publico. La carga es idempotente por titulo y enlaza las noticias con publicaciones, investigadores y unidades demo validadas. La migracion `backend/src/main/resources/db/migration/V27__enrich_demo_news_images_and_body.sql` amplia esos ejemplos con cuerpos editoriales mas desarrollados e imagenes locales servidas desde `frontend/public/news`.
+
+Casos incluidos:
+
+- IA local para comites de evidencia clinica.
+- Conservacion de grandes felinos, biodiversidad y seguimiento de habitats.
+- Salud publica, clima urbano y vulnerabilidad.
+- Mapas tematicos, busqueda inteligente y colaboracion cientifica.
+
+Estas noticias se sirven desde `/api/portal/news` y deben aparecer con imagen en `/portal`, `/portal/noticias` y el detalle publico cuando la base esta migrada.
+
 ## Embeddings
 
 El arranque no reconstruye embeddings para evitar trabajo costoso. Para reconstruirlos, inicia el backend con el proveedor deseado y ejecuta:

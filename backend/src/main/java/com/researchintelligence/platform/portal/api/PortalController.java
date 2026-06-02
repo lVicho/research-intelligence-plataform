@@ -1,6 +1,7 @@
 package com.researchintelligence.platform.portal.api;
 
 import com.researchintelligence.platform.portal.application.PortalService;
+import com.researchintelligence.platform.portal.application.PortalContextAssistantService;
 import com.researchintelligence.platform.portal.application.PortalDemoQueryService;
 import com.researchintelligence.platform.portal.application.PublicationExplanationService;
 import com.researchintelligence.platform.publications.domain.PublicationStatus;
@@ -23,15 +24,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class PortalController {
 
     private final PortalService service;
+    private final PortalContextAssistantService contextAssistantService;
     private final PortalDemoQueryService demoQueryService;
     private final PublicationExplanationService publicationExplanationService;
 
     public PortalController(
         PortalService service,
+        PortalContextAssistantService contextAssistantService,
         PortalDemoQueryService demoQueryService,
         PublicationExplanationService publicationExplanationService
     ) {
         this.service = service;
+        this.contextAssistantService = contextAssistantService;
         this.demoQueryService = demoQueryService;
         this.publicationExplanationService = publicationExplanationService;
     }
@@ -114,6 +118,11 @@ public class PortalController {
         @RequestBody(required = false) PublicationExplanationRequest request
     ) {
         return publicationExplanationService.explain(id, request);
+    }
+
+    @PostMapping("/context-assistant/ask")
+    public PortalContextAssistantResponse askContextAssistant(@jakarta.validation.Valid @RequestBody PortalContextAssistantRequest request) {
+        return contextAssistantService.ask(request);
     }
 
     @GetMapping("/search")

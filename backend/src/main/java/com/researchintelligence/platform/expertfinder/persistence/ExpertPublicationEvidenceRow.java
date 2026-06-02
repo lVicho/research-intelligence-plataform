@@ -17,6 +17,7 @@ public record ExpertPublicationEvidenceRow(
     String publicationTitle,
     String publicationAbstract,
     Integer publicationYear,
+    String publicationType,
     String publicationDoi,
     String publicationSource,
     String publicationUrl,

@@ -519,6 +519,7 @@ public class ExpertFinderService {
         private final String title;
         private final String abstractText;
         private final Integer year;
+        private final String type;
         private final String doi;
         private final String source;
         private final String url;
@@ -532,6 +533,7 @@ public class ExpertFinderService {
             this.title = row.publicationTitle();
             this.abstractText = row.publicationAbstract();
             this.year = row.publicationYear();
+            this.type = row.publicationType();
             this.doi = row.publicationDoi();
             this.source = row.publicationSource();
             this.url = row.publicationUrl();
@@ -585,6 +587,7 @@ public class ExpertFinderService {
                 id,
                 title,
                 year,
+                type,
                 doi,
                 source,
                 url,

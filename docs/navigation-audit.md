@@ -17,13 +17,15 @@ Reachable from public navigation:
 - `/portal/investigadores/:id`
 - `/portal/publicaciones`
 - `/portal/guia-expertos`
-- `/portal/asistente`
 
 Public redirects kept:
 
 - `/portal/busqueda` -> `/portal/publicaciones`
-- `/portal/copiloto` -> `/portal/asistente`
+- `/portal/asistente` -> `/portal`
+- `/portal/copiloto` -> `/portal`
 - `/portal/mapa-estrategico` -> `/admin/mapa-estrategico`
+
+The public assistant is contextual and embedded in relevant portal pages. It is not a public top-level navigation destination.
 
 The public navigation intentionally does not expose internal tools such as Mapa estrategico, Informes, Validacion, Auditoria, Calidad de datos, Datos maestros, Normalizacion de temas, Ingesta, Oportunidades de colaboracion, or Panel institucional.
 

@@ -9,11 +9,15 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { Observable } from 'rxjs';
 
 import { AcademicMasterDataService } from '../../core/api/academic-master-data.service';
 import {
   FilterCount,
   PageResponse,
+  PortalContextAssistantSearchRequest,
+  PortalPageResponse,
+  PortalPublicationSummary,
   PublicationFilterMetadata,
   PublicationSemanticSearchResult,
   PublicationStatus,
@@ -22,6 +26,7 @@ import {
   ResearcherSummary
 } from '../../core/api/api-models';
 import { PortalDemoQuerySuggestionsService } from '../../core/api/portal-demo-query-suggestions.service';
+import { PortalApiService } from '../../core/api/portal-api.service';
 import { PublicationsApiService } from '../../core/api/publications-api.service';
 import { ResearchersApiService } from '../../core/api/researchers-api.service';
 import { AuthStateService } from '../../core/auth/auth-state.service';
@@ -36,6 +41,7 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
 import { VisibilityNoteComponent } from '../../shared/components/visibility-note.component';
 import { publicationStatusTone } from '../../shared/utils/display-labels';
 import { publicVisibilityNote, visibilityNoteForUser } from '../../shared/utils/visibility-labels';
+import { PortalContextAssistantComponent } from '../portal/portal-context-assistant.component';
 
 type SearchMode = 'fields' | 'semantic';
 type TypeFilter = PublicationType | 'all';
@@ -105,6 +111,7 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PortalContextAssistantComponent,
     StatusChipComponent,
     TagChipComponent,
     VisibilityNoteComponent
@@ -125,254 +132,251 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
         <rip-visibility-note [message]="pageVisibilityNote()" emphasis="strong" />
       }
 
-      <section class="portal-intro" [class.internal-intro]="!isPortalView()">
-        <div class="intro-copy">
-          <p class="section-kicker">Descubrimiento público</p>
-          <h2>Una sola búsqueda para explorar publicaciones por campos o por significado.</h2>
-          <p>
-            Alterna entre coincidencia por campos y búsqueda semántica sin cambiar de página ni de componente de
-            resultados.
-          </p>
-          @if (isPortalView()) {
-            <p class="portal-note">El portal muestra actividad pública revisada por la institución.</p>
-          }
-        </div>
-
-        <div class="intro-pills">
-          <span>{{ resultsCount() }} {{ resultsCountLabel() }}</span>
-          <span>{{ metadata()?.topics?.length || 0 }} temas visibles</span>
-        </div>
+      <section class="portal-list-intro" [class.internal-intro]="!isPortalView()">
+        <p class="section-kicker">Descubrimiento público</p>
+        <h2>Publicaciones validadas en una búsqueda simple o inteligente.</h2>
+        <p>
+          Busca por título, autores, temas o conceptos y usa los filtros como apoyo lateral, sin cambiar de página ni
+          duplicar resultados.
+        </p>
+        @if (isPortalView()) {
+          <p class="portal-note">El portal muestra actividad pública revisada por la institución.</p>
+        }
       </section>
 
-      <mat-card appearance="outlined" class="discovery-card">
-        <mat-card-content>
-          @if (masterDataLoading()) {
-            <p class="support-copy">Cargando filtros académicos...</p>
-          }
+      @if (masterDataLoading()) {
+        <p class="support-copy">Cargando filtros académicos...</p>
+      }
 
-          @if (masterDataError()) {
-            <div class="inline-warning">
-              <span>{{ masterDataError() }}</span>
-              <button mat-button type="button" (click)="retryMasterData()">Reintentar</button>
-            </div>
-          }
+      @if (masterDataError()) {
+        <div class="inline-warning">
+          <span>{{ masterDataError() }}</span>
+          <button mat-button type="button" (click)="retryMasterData()">Reintentar</button>
+        </div>
+      }
 
-          <form class="search-form" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
-            <div class="mode-row">
-              <div class="mode-copy">
-                <p class="section-kicker">Modo de búsqueda</p>
-                <p class="support-copy">{{ modeHelperText() }}</p>
-              </div>
-
-              <mat-button-toggle-group
-                formControlName="mode"
-                aria-label="Modo de búsqueda"
-                (change)="onModeChange()"
-              >
-                <mat-button-toggle value="fields">Por campos</mat-button-toggle>
-                <mat-button-toggle value="semantic">Semántica</mat-button-toggle>
-              </mat-button-toggle-group>
-            </div>
-
-            <div class="query-row">
-              <mat-form-field appearance="outline" class="query-field">
-                <mat-label>Búsqueda principal</mat-label>
-                <input
-                  matInput
-                  formControlName="query"
-                  placeholder="Buscar publicaciones, autores, temas o conceptos..."
-                >
-                <mat-hint>{{ queryFieldHint() }}</mat-hint>
-              </mat-form-field>
-
-              <div class="query-actions">
-                <button mat-button type="button" (click)="clearSearch()">Limpiar</button>
-                <button mat-flat-button color="primary" type="submit" [disabled]="submitDisabled()">
-                  Buscar
-                </button>
-              </div>
-            </div>
-
-            @if (searchMode() === 'semantic') {
-              <div class="semantic-support">
-                <rip-demo-query-chips
-                  [title]="semanticSuggestionTitle()"
-                  [caption]="semanticSuggestionCaption()"
-                  [queries]="semanticSuggestions()"
-                  [disabled]="semanticLoading()"
-                  (querySelected)="useSemanticExample($event)"
-                />
-
-                @if (canManageMasterData()) {
-                  <mat-checkbox formControlName="includeNonValidated">
-                    Incluir datos no validados
-                  </mat-checkbox>
-                }
-              </div>
-            }
-
-            @if (searchMode() === 'fields') {
-              <div class="advanced-actions">
-                <button mat-button type="button" class="advanced-toggle" (click)="toggleAdvancedFilters()">
-                  {{ showAdvancedFilters() ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados' }}
-                </button>
-
-                @if (activeFieldFiltersCount() > 0) {
-                  <span class="active-filter-count">{{ activeFieldFiltersCount() }} filtros activos</span>
-                }
-              </div>
-
-              @if (showAdvancedFilters() || hasAdvancedFieldFilters()) {
-                <div class="advanced-filters">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Año desde</mat-label>
-                    <input matInput type="number" formControlName="yearFrom" [placeholder]="metadata()?.minYear?.toString() || ''">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Año hasta</mat-label>
-                    <input matInput type="number" formControlName="yearTo" [placeholder]="metadata()?.maxYear?.toString() || ''">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Tipo</mat-label>
-                    <mat-select formControlName="type">
-                      <mat-option value="all">Todos los tipos</mat-option>
-                      @for (type of typeOptions(); track type.value) {
-                        <mat-option [value]="type.value">{{ publicationTypeLabel(type.value) }} ({{ type.count }})</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Investigador</mat-label>
-                    <mat-select formControlName="researcherId">
-                      <mat-option value="all">Todos los investigadores</mat-option>
-                      @for (researcher of researchers(); track researcher.id) {
-                        <mat-option [value]="researcher.id.toString()">
-                          {{ researcher.displayName || researcher.fullName }}
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Unidad</mat-label>
-                    <mat-select formControlName="researchUnitId">
-                      <mat-option value="all">Todas las unidades</mat-option>
-                      @for (unit of metadata()?.researchUnits || []; track unit.id) {
-                        <mat-option [value]="unit.id?.toString() || 'all'">{{ unit.label }} ({{ unit.count }})</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Tema</mat-label>
-                    <mat-select formControlName="topic">
-                      <mat-option value="">Todos los temas</mat-option>
-                      @for (topic of metadata()?.topics || []; track topic.id) {
-                        <mat-option [value]="topic.value">{{ topic.label }} ({{ topic.count }})</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  @if (!isPortalView()) {
-                    <mat-form-field appearance="outline">
-                      <mat-label>Estado</mat-label>
-                      <mat-select formControlName="status">
-                        <mat-option value="all">Todos los estados</mat-option>
-                        @for (status of statusOptions(); track status.value) {
-                          <mat-option [value]="status.value">{{ publicationStatusLabel(status.value) }} ({{ status.count }})</mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
-                  }
-                </div>
-              }
-            }
-          </form>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card appearance="outlined" class="results-card">
-        <mat-card-content>
-          <div class="results-toolbar">
-            <div>
-              <p class="section-kicker">{{ searchMode() === 'semantic' ? 'Resultados semánticos' : 'Resultados' }}</p>
-              <div class="result-count">{{ resultsCount() }} {{ resultsCountLabel() }}</div>
-              <p class="support-copy">{{ resultsHelperText() }}</p>
-            </div>
-
-            @if (searchMode() === 'fields') {
-              <div class="sort-actions">
-                <button mat-button type="button" (click)="toggleSort('year')">Año {{ sortLabel('year') }}</button>
-                <button mat-button type="button" (click)="toggleSort('title')">Título {{ sortLabel('title') }}</button>
-              </div>
-            }
+      <form class="publication-search-form" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
+        <section class="portal-search-strip">
+          <div class="mode-switch">
+            <p class="section-kicker">Modo de búsqueda</p>
+            <mat-button-toggle-group
+              formControlName="mode"
+              aria-label="Modo de búsqueda"
+              (change)="onModeChange()"
+            >
+              <mat-button-toggle value="fields">Búsqueda simple</mat-button-toggle>
+              <mat-button-toggle value="semantic">Búsqueda inteligente</mat-button-toggle>
+            </mat-button-toggle-group>
           </div>
 
-          @if (activeLoading()) {
-            <rip-loading-state [message]="loadingMessage()" />
-          } @else if (activeErrorMessage()) {
-            <rip-error-state [message]="activeErrorMessage()" />
-          } @else if (showSemanticPromptState()) {
-            <rip-empty-state
-              title="Empieza con una idea"
-              message="Escribe una consulta en lenguaje natural para buscar publicaciones por significado."
-            />
-          } @else if (displayedResults().length === 0) {
-            <rip-empty-state [title]="emptyStateTitle()" [message]="emptyStateMessage()" />
-          } @else {
-            <div class="results-grid">
-              @for (publication of displayedResults(); track publication.id) {
-                <a class="publication-card" [routerLink]="publicationLink(publication.id)" [queryParams]="navigationContext.returnQueryParams('Volver a publicaciones')">
-                  <div class="card-top">
-                    <span class="year-pill">{{ publication.year || 's. f.' }}</span>
+          <div class="query-row">
+            <mat-form-field appearance="outline" class="query-field">
+              <mat-label>Búsqueda principal</mat-label>
+              <input
+                matInput
+                formControlName="query"
+                placeholder="Buscar publicaciones, autores, temas o conceptos..."
+              >
+            </mat-form-field>
 
-                    @if (publication.similarityScore !== null) {
-                      <span class="similarity-pill" [class.weak]="publication.lowSimilarity">
-                        {{ similarityPercent(publication.similarityScore) }}
-                      </span>
+            <div class="query-actions">
+              <button class="filters-toggle" mat-stroked-button type="button" (click)="toggleFilters()">Filtros</button>
+              <button mat-flat-button color="primary" type="submit" [disabled]="submitDisabled()">
+                Buscar
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="portal-search-layout">
+          <aside class="filter-panel" [class.open]="filtersOpen()">
+            <div class="filter-panel-heading">
+              <h3>Filtros</h3>
+              @if (hasSearchState()) {
+                <button mat-button type="button" (click)="clearSearch()">Limpiar filtros</button>
+              }
+            </div>
+
+            @if (searchMode() === 'fields') {
+              <mat-form-field appearance="outline">
+                <mat-label>Año desde</mat-label>
+                <input matInput type="number" formControlName="yearFrom" [placeholder]="metadata()?.minYear?.toString() || ''">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Año hasta</mat-label>
+                <input matInput type="number" formControlName="yearTo" [placeholder]="metadata()?.maxYear?.toString() || ''">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Tipo</mat-label>
+                <mat-select formControlName="type">
+                  <mat-option value="all">Todos los tipos</mat-option>
+                  @for (type of typeOptions(); track type.value) {
+                    <mat-option [value]="type.value">{{ publicationTypeLabel(type.value) }} ({{ type.count }})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Unidad</mat-label>
+                <mat-select formControlName="researchUnitId">
+                  <mat-option value="all">Todas las unidades</mat-option>
+                  @for (unit of metadata()?.researchUnits || []; track unit.id) {
+                    <mat-option [value]="unit.id?.toString() || 'all'">{{ unit.label }} ({{ unit.count }})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Investigador</mat-label>
+                <mat-select formControlName="researcherId">
+                  <mat-option value="all">Todos los investigadores</mat-option>
+                  @for (researcher of researchers(); track researcher.id) {
+                    <mat-option [value]="researcher.id.toString()">
+                      {{ researcher.displayName || researcher.fullName }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Tema</mat-label>
+                <mat-select formControlName="topic">
+                  <mat-option value="">Todos los temas</mat-option>
+                  @for (topic of metadata()?.topics || []; track topic.id) {
+                    <mat-option [value]="topic.value">{{ topic.label }} ({{ topic.count }})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (!isPortalView()) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Estado</mat-label>
+                  <mat-select formControlName="status">
+                    <mat-option value="all">Todos los estados</mat-option>
+                    @for (status of statusOptions(); track status.value) {
+                      <mat-option [value]="status.value">{{ publicationStatusLabel(status.value) }} ({{ status.count }})</mat-option>
                     }
-                  </div>
+                  </mat-select>
+                </mat-form-field>
+              }
 
-                  <div class="card-body">
-                    <strong>{{ publication.title }}</strong>
-                    <p>{{ sourceLabel(publication) }}</p>
+              <button mat-stroked-button type="submit">Aplicar filtros</button>
+            } @else {
+              <p class="support-copy">
+                La búsqueda inteligente interpreta una idea o pregunta y muestra hasta 20 resultados ordenados por
+                afinidad semántica.
+              </p>
 
-                    @if (publication.authors.length > 0) {
-                      <p class="authors">{{ publication.authors.join(', ') }}</p>
-                    }
+              <rip-demo-query-chips
+                [title]="semanticSuggestionTitle()"
+                [caption]="semanticSuggestionCaption()"
+                [queries]="semanticSuggestions()"
+                [disabled]="semanticLoading()"
+                (querySelected)="useSemanticExample($event)"
+              />
 
-                    <div class="chip-list">
-                      <rip-tag-chip [label]="publicationTypeLabel(publication.type)" tone="type" />
+              @if (canManageMasterData()) {
+                <mat-checkbox formControlName="includeNonValidated">
+                  Incluir datos no validados
+                </mat-checkbox>
+              }
+            }
+          </aside>
 
-                      @if (!isPortalView()) {
-                        <rip-status-chip
-                          [label]="publicationStatusLabel(publication.status)"
-                          [tone]="publicationStatusTone(publication.status)"
-                        />
-                      }
+          <section class="results-panel">
+            <div class="results-summary">
+              <div>
+                <p class="section-kicker">{{ searchMode() === 'semantic' ? 'Resultados inteligentes' : 'Resultados' }}</p>
+                <strong>{{ resultsCount() }} {{ resultsCountLabel() }}</strong>
+                <p class="support-copy">{{ resultsHelperText() }}</p>
+              </div>
 
-                      @for (topic of publication.topics.slice(0, 4); track topic) {
-                        <rip-tag-chip [label]="topic" />
+              @if (!isPortalView() && searchMode() === 'fields') {
+                <div class="sort-actions">
+                  <button mat-button type="button" (click)="toggleSort('year')">Año {{ sortLabel('year') }}</button>
+                  <button mat-button type="button" (click)="toggleSort('title')">Título {{ sortLabel('title') }}</button>
+                </div>
+              }
+            </div>
+
+            @if (canAskAboutPublicationResults()) {
+              <rip-portal-context-assistant
+                contextScope="PUBLICATION_SEARCH_RESULTS"
+                [searchRequest]="publicationAssistantSearchRequest()"
+                triggerLabel="Preguntar sobre estos resultados"
+                contextTitle="Asistente contextual de resultados"
+                helperText="Pregunta sobre el alcance completo de la búsqueda pública, no solo sobre las tarjetas visibles."
+              />
+            }
+
+            @if (activeLoading()) {
+              <rip-loading-state [message]="loadingMessage()" />
+            } @else if (activeErrorMessage()) {
+              <rip-error-state [message]="activeErrorMessage()" />
+            } @else if (showSemanticPromptState()) {
+              <rip-empty-state
+                title="Empieza con una idea"
+                message="Escribe una consulta en lenguaje natural para buscar publicaciones por significado."
+              />
+            } @else if (displayedResults().length === 0) {
+              <rip-empty-state [title]="emptyStateTitle()" [message]="emptyStateMessage()" />
+            } @else {
+              <div class="results-grid">
+                @for (publication of displayedResults(); track publication.id) {
+                  <a class="publication-card" [routerLink]="publicationLink(publication.id)" [queryParams]="navigationContext.returnQueryParams('Volver a publicaciones')">
+                    <div class="card-top">
+                      <span class="type-badge">{{ publicationTypeLabel(publication.type) }}</span>
+                      <span class="year-pill">{{ publication.year || 's. f.' }}</span>
+
+                      @if (publication.similarityScore !== null) {
+                        <span class="similarity-pill" [class.weak]="publication.lowSimilarity">
+                          {{ similarityPercent(publication.similarityScore) }}
+                        </span>
                       }
                     </div>
 
-                    @if (publication.retrievalReason) {
-                      <p class="semantic-note">{{ publication.retrievalReason }}</p>
-                    }
-                  </div>
+                    <div class="card-body">
+                      <strong>{{ publication.title }}</strong>
+                      <p>{{ sourceLabel(publication) }}</p>
 
-                  @if (!isPortalView() && publication.similarityScore === null) {
-                    <span class="created-date">Alta {{ publication.createdAt.slice(0, 10) }}</span>
-                  }
-                </a>
-              }
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
+                      @if (publication.authors.length > 0) {
+                        <p class="authors">{{ publication.authors.join(', ') }}</p>
+                      }
+
+                      <div class="chip-list">
+                        @for (topic of publication.topics.slice(0, 3); track topic) {
+                          <rip-tag-chip [label]="topic" />
+                        }
+                        @if (publication.topics.length > 3) {
+                          <span class="extra-chip">+{{ publication.topics.length - 3 }}</span>
+                        }
+
+                        @if (!isPortalView()) {
+                          <rip-status-chip
+                            [label]="publicationStatusLabel(publication.status)"
+                            [tone]="publicationStatusTone(publication.status)"
+                          />
+                        }
+                      </div>
+
+                      @if (publication.retrievalReason) {
+                        <p class="semantic-note">{{ publication.retrievalReason }}</p>
+                      }
+                    </div>
+
+                    <div class="card-footer">
+                      <span>{{ publicationDateLabel(publication) }}</span>
+                      <strong>Ver publicación</strong>
+                    </div>
+                  </a>
+                }
+              </div>
+            }
+          </section>
+        </section>
+      </form>
 
       @if (searchMode() === 'fields') {
         <div class="pagination">
@@ -384,9 +388,159 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     </section>
   `,
   styles: [`
+    :host {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    :host * {
+      box-sizing: border-box;
+    }
+
+    :host ::ng-deep .mat-mdc-form-field,
+    :host ::ng-deep .mat-mdc-form-field-infix {
+      min-width: 0;
+      max-width: 100%;
+    }
+
     .publications-page {
       display: grid;
       gap: 28px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .portal-list-intro {
+      display: grid;
+      gap: 10px;
+      max-width: 900px;
+    }
+
+    .portal-list-intro h2 {
+      margin: 0;
+      color: #102033;
+      font-size: clamp(1.5rem, 2.3vw, 2.05rem);
+      line-height: 1.16;
+    }
+
+    .portal-list-intro p:not(.section-kicker) {
+      margin: 0;
+      color: #5f7182;
+      line-height: 1.65;
+    }
+
+    .publication-search-form {
+      display: grid;
+      gap: 22px;
+      min-width: 0;
+    }
+
+    .portal-search-strip {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: stretch;
+      padding: 18px;
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .mode-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .mode-switch mat-button-toggle-group {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: min(460px, 100%);
+      border-radius: 999px;
+      overflow: hidden;
+      flex: 0 1 460px;
+    }
+
+    .mode-switch mat-button-toggle {
+      text-align: center;
+      min-width: 0;
+      white-space: normal;
+    }
+
+    :host ::ng-deep .mode-switch .mat-button-toggle-label-content {
+      padding: 0 16px;
+      line-height: 1.2;
+      white-space: normal;
+    }
+
+    :host ::ng-deep .portal-search-strip .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+
+    .portal-search-layout {
+      display: grid;
+      grid-template-columns: minmax(230px, 290px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .filter-panel,
+    .results-summary {
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .filter-panel {
+      position: sticky;
+      top: 92px;
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .filter-panel-heading,
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-panel h3 {
+      margin: 0;
+      color: #102033;
+      font-size: 1rem;
+    }
+
+    .filters-toggle {
+      display: none;
+    }
+
+    .results-panel {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .results-summary {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+    }
+
+    .results-summary strong {
+      display: block;
+      margin-top: 2px;
+      color: #102033;
+      font-size: 1.05rem;
     }
 
     .portal-intro,
@@ -485,7 +639,7 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     }
 
     .query-row {
-      align-items: stretch;
+      align-items: center;
     }
 
     .query-field {
@@ -494,7 +648,7 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
 
     .query-actions {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: flex-end;
       gap: 10px;
       flex-wrap: wrap;
@@ -615,9 +769,9 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     .publication-card {
       display: grid;
       gap: 16px;
-      padding: 20px;
+      padding: 22px;
       border: 1px solid #dfe7ed;
-      border-radius: 12px;
+      border-radius: 18px;
       background: #ffffff;
       color: inherit;
       text-decoration: none;
@@ -643,7 +797,8 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     }
 
     .year-pill,
-    .similarity-pill {
+    .similarity-pill,
+    .type-badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -658,6 +813,11 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
     .year-pill {
       background: #eaf2f7;
       color: #31566a;
+    }
+
+    .type-badge {
+      background: #eef6f3;
+      color: #28624a;
     }
 
     .similarity-pill {
@@ -706,6 +866,28 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
       font-size: 0.82rem;
     }
 
+    .extra-chip,
+    .card-footer span {
+      color: #536776;
+      font-size: 0.84rem;
+      font-weight: 720;
+    }
+
+    .extra-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f7fa;
+    }
+
+    .card-footer {
+      color: #526879;
+    }
+
+    .card-footer strong {
+      color: #23617f;
+      font-size: 0.92rem;
+    }
+
     .pagination {
       display: flex;
       align-items: center;
@@ -716,10 +898,26 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
 
     @media (max-width: 860px) {
       .portal-intro,
+      .portal-search-strip,
+      .portal-search-layout,
       .mode-row,
+      .results-toolbar {
+        grid-template-columns: 1fr;
+      }
+
       .query-row,
       .results-toolbar {
         flex-direction: column;
+      }
+
+      .mode-switch {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .mode-switch mat-button-toggle-group {
+        width: 100%;
+        flex-basis: auto;
       }
 
       .intro-pills,
@@ -732,7 +930,21 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
       }
 
       .inline-warning {
+        flex-direction: column;
         align-items: flex-start;
+      }
+
+      .filters-toggle {
+        display: inline-flex;
+      }
+
+      .filter-panel {
+        position: static;
+        display: none;
+      }
+
+      .filter-panel.open {
+        display: grid;
       }
     }
 
@@ -741,18 +953,28 @@ const FALLBACK_SEMANTIC_EXAMPLES = [
         padding: 22px;
       }
 
-      .results-grid {
-        grid-template-columns: 1fr;
+      .portal-search-strip {
+        padding: 14px;
+      }
+
+      .query-actions,
+      .pagination {
+        justify-content: flex-start;
       }
 
       .pagination {
-        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+
+      .results-grid {
+        grid-template-columns: 1fr;
       }
     }
   `]
 })
 export class PublicationsPageComponent implements OnInit {
   private readonly api = inject(PublicationsApiService);
+  private readonly portalApi = inject(PortalApiService);
   private readonly researchersApi = inject(ResearchersApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -762,7 +984,7 @@ export class PublicationsPageComponent implements OnInit {
   private readonly demoQuerySuggestions = inject(PortalDemoQuerySuggestionsService);
   readonly navigationContext = inject(NavigationContextService);
 
-  readonly result = signal<PageResponse<PublicationSummary> | null>(null);
+  readonly result = signal<PageResponse<PublicationSummary> | PortalPageResponse<PortalPublicationSummary> | null>(null);
   readonly metadata = signal<PublicationFilterMetadata | null>(null);
   readonly researchers = signal<ResearcherSummary[]>([]);
   readonly semanticResults = signal<PublicationSemanticSearchResult[]>([]);
@@ -778,6 +1000,7 @@ export class PublicationsPageComponent implements OnInit {
   readonly sortDirection = signal<SortDirection>('desc');
   readonly searchMode = signal<SearchMode>('fields');
   readonly showAdvancedFilters = signal(false);
+  readonly filtersOpen = signal(false);
   readonly isPortalView = signal(this.route.snapshot.data['portalView'] === true);
   readonly canManageMasterData = computed(() => this.auth.hasAnyRole(['ADMIN']) && !this.isPortalView());
   readonly masterDataLoading = this.masterData.loading;
@@ -972,6 +1195,10 @@ export class PublicationsPageComponent implements OnInit {
     this.showAdvancedFilters.update((visible) => !visible);
   }
 
+  toggleFilters(): void {
+    this.filtersOpen.update((visible) => !visible);
+  }
+
   toggleSort(sortBy: PublicationSortBy): void {
     const nextDirection: SortDirection = this.sortBy() === sortBy && this.sortDirection() === 'asc' ? 'desc' : 'asc';
     this.sortBy.set(sortBy);
@@ -1026,8 +1253,8 @@ export class PublicationsPageComponent implements OnInit {
 
   loadingMessage(): string {
     return this.searchMode() === 'semantic'
-      ? 'Buscando publicaciones relacionadas'
-      : 'Cargando publicaciones';
+      ? 'Buscando publicaciones relacionadas...'
+      : 'Cargando publicaciones...';
   }
 
   showSemanticPromptState(): boolean {
@@ -1052,7 +1279,7 @@ export class PublicationsPageComponent implements OnInit {
 
   resultsCountLabel(): string {
     if (this.searchMode() === 'semantic') {
-      return this.resultsCount() === 1 ? 'resultado semántico' : 'resultados semánticos';
+      return this.resultsCount() === 1 ? 'resultado inteligente' : 'resultados inteligentes';
     }
     return this.resultsCount() === 1 ? 'publicación encontrada' : 'publicaciones encontradas';
   }
@@ -1060,19 +1287,19 @@ export class PublicationsPageComponent implements OnInit {
   resultsHelperText(): string {
     return this.searchMode() === 'semantic'
       ? 'Los resultados se muestran en las mismas tarjetas y se ordenan por afinidad semántica.'
-      : 'La lista reúne coincidencias por campos y mantiene los filtros avanzados como apoyo secundario.';
+      : 'La lista reúne coincidencias por texto y filtros públicos de apoyo.';
   }
 
   modeHelperText(): string {
     return this.searchMode() === 'semantic'
       ? 'Describe una idea, una pregunta o un concepto para recuperar publicaciones cercanas por significado.'
-      : 'Usa coincidencia por campos cuando quieras combinar texto libre con filtros bibliográficos más precisos.';
+      : 'Usa búsqueda simple cuando quieras combinar texto libre con filtros bibliográficos precisos.';
   }
 
   queryFieldHint(): string {
     return this.searchMode() === 'semantic'
-      ? 'La búsqueda semántica interpreta intención y contexto en la misma lista de resultados.'
-      : 'Busca por texto y apóyate en filtros avanzados si necesitas acotar por año, tipo, unidad o tema.';
+      ? 'La búsqueda inteligente interpreta intención y contexto en la misma lista de resultados.'
+      : 'Apóyate en los filtros laterales si necesitas acotar por año, tipo, unidad o tema.';
   }
 
   hasAdvancedFieldFilters(value?: {
@@ -1089,11 +1316,46 @@ export class PublicationsPageComponent implements OnInit {
       currentValue.yearFrom
       || currentValue.yearTo
       || currentValue.type !== 'all'
-      || currentValue.status !== 'all'
+      || (!this.isPortalView() && currentValue.status !== 'all')
       || currentValue.researchUnitId !== 'all'
       || currentValue.researcherId !== 'all'
       || currentValue.topic
     );
+  }
+
+  hasSearchState(): boolean {
+    const value = this.searchForm.getRawValue();
+    return Boolean(
+      value.query.trim()
+      || value.yearFrom
+      || value.yearTo
+      || value.type !== 'all'
+      || (!this.isPortalView() && value.status !== 'all')
+      || value.researchUnitId !== 'all'
+      || value.researcherId !== 'all'
+      || value.topic
+      || (this.canManageMasterData() && value.includeNonValidated)
+    );
+  }
+
+  canAskAboutPublicationResults(): boolean {
+    return this.isPortalView()
+      && (this.resultsCount() > 0 || this.hasSearchState() || this.semanticSearchRequested());
+  }
+
+  publicationAssistantSearchRequest(): PortalContextAssistantSearchRequest {
+    const value = this.searchForm.getRawValue();
+    return {
+      query: value.query.trim() || null,
+      mode: value.mode === 'semantic' ? 'SEMANTIC' : 'FIELDS',
+      yearFrom: this.toNumber(value.yearFrom) ?? null,
+      yearTo: this.toNumber(value.yearTo) ?? null,
+      type: value.type === 'all' ? null : value.type,
+      status: this.isPortalView() || value.status === 'all' ? null : value.status,
+      researchUnitId: this.toNumber(value.researchUnitId) ?? null,
+      researcherId: this.toNumber(value.researcherId) ?? null,
+      topic: value.topic || null
+    };
   }
 
   activeFieldFiltersCount(): number {
@@ -1115,6 +1377,10 @@ export class PublicationsPageComponent implements OnInit {
 
   sourceLabel(publication: UnifiedPublicationResult): string {
     return publication.source || publication.doi || 'Fuente no disponible';
+  }
+
+  publicationDateLabel(publication: UnifiedPublicationResult): string {
+    return publication.year ? `${publication.year}` : 'Fecha no disponible';
   }
 
   publicationLink(publicationId: number): string[] {
@@ -1195,7 +1461,14 @@ export class PublicationsPageComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
 
-    this.api.search(filters)
+    const request$: Observable<PageResponse<PublicationSummary> | PortalPageResponse<PortalPublicationSummary>> = this.isPortalView()
+      ? this.portalApi.publications({
+        ...filters,
+        status: undefined
+      })
+      : this.api.search(filters);
+
+    request$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -1255,7 +1528,7 @@ export class PublicationsPageComponent implements OnInit {
       yearFrom: value.yearFrom || null,
       yearTo: value.yearTo || null,
       type: value.type === 'all' ? null : value.type,
-      status: value.status === 'all' ? null : value.status,
+      status: this.isPortalView() || value.status === 'all' ? null : value.status,
       researchUnitId: value.researchUnitId === 'all' ? null : value.researchUnitId,
       researcherId: value.researcherId === 'all' ? null : value.researcherId,
       topic: value.topic || null,

@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -31,7 +30,6 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -42,110 +40,118 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
     TagChipComponent
   ],
   template: `
-    <section class="page portal-researchers">
+    <section class="page portal-list-page">
       <rip-page-header
         title="Investigadores"
         eyebrow="Portal público"
-        [subtitle]="headerSubtitle()"
+        subtitle="Busca perfiles públicos por nombre, unidad, tema o área de experiencia."
       />
 
-      <section class="surface-intro portal-intro">
+      <section class="portal-list-intro">
         <p class="section-kicker">Perfiles institucionales</p>
-        <div class="intro-grid">
-          <div>
-            <h2>Perfiles públicos con afiliación, experiencia y actividad visible.</h2>
-            <p>
-              Encuentra investigadores por nombre, unidad o tema sin entrar en una vista administrativa ni en un
-              formulario recargado.
-            </p>
-          </div>
-          <div class="intro-pills">
-            <span>{{ result().totalElements }} perfiles</span>
-            <span>{{ unitOptions().length }} unidades</span>
-          </div>
-        </div>
+        <h2>Investigadores con afiliación pública, temas de trabajo y actividad validada.</h2>
+        <p>
+          Un directorio claro para localizar experiencia investigadora sin exponer estados internos ni controles
+          administrativos.
+        </p>
       </section>
 
-      <mat-card appearance="outlined" class="search-card">
-        <mat-card-content>
-          <form class="search-shell" (ngSubmit)="applyFilters()">
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Buscar investigador</mat-label>
-              <input matInput [formControl]="searchControl" placeholder="Nombre, ORCID o afiliación">
-            </mat-form-field>
+      <form class="portal-search-strip" (ngSubmit)="applyFilters()">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar investigadores</mat-label>
+          <input matInput [formControl]="searchControl" placeholder="Buscar investigadores, temas o áreas de experiencia...">
+        </mat-form-field>
 
-            <div class="search-actions">
-              <button mat-stroked-button type="button" (click)="toggleAdvanced()">
-                {{ showAdvanced() ? 'Ocultar filtros' : 'Más filtros' }}
-              </button>
-              @if (hasActiveFilters()) {
-                <button mat-button type="button" (click)="clearFilters()">Limpiar</button>
-              }
-              <button mat-flat-button color="primary" type="submit">Buscar</button>
-            </div>
-          </form>
-
-          @if (showAdvanced()) {
-            <div class="advanced-grid">
-              <mat-form-field appearance="outline">
-                <mat-label>Unidad</mat-label>
-                <mat-select [formControl]="unitControl">
-                  <mat-option value="all">Todas las unidades</mat-option>
-                  @for (unit of unitOptions(); track unit.id) {
-                    <mat-option [value]="unit.id.toString()">{{ unit.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Tema</mat-label>
-                <input matInput [formControl]="topicControl" placeholder="Ej.: genómica, IA clínica, materiales">
-              </mat-form-field>
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
-
-      @if (loading()) {
-        <rip-loading-state message="Cargando investigadores" />
-      } @else if (errorMessage()) {
-        <rip-error-state [message]="errorMessage()" />
-      } @else if (result().content.length === 0) {
-        <rip-empty-state title="Sin resultados" message="Prueba otra búsqueda o ajusta los filtros del directorio." />
-      } @else {
-        <div class="researcher-grid">
-          @for (researcher of result().content; track researcher.id) {
-            <a class="researcher-card" [routerLink]="['/portal/investigadores', researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver a investigadores')">
-              <div class="card-top">
-                <div class="identity">
-                  <strong>{{ researcher.displayName || researcher.fullName }}</strong>
-                  <p>{{ researcher.primaryAffiliationName || 'Afiliación pública pendiente' }}</p>
-                </div>
-                @if (researcher.orcid) {
-                  <span class="orcid-link">ORCID</span>
-                }
-              </div>
-
-              <div class="metric-row">
-                <span>{{ publicationLabel(researcher.id) }}</span>
-                <span>{{ activityLabel(researcher.id) }}</span>
-              </div>
-
-              <div class="topic-block">
-                @for (topic of visibleTopics(researcher.id); track topic) {
-                  <rip-tag-chip [label]="topic" />
-                }
-                @if (extraTopics(researcher.id) > 0) {
-                  <span class="extra-chip">+{{ extraTopics(researcher.id) }}</span>
-                }
-                @if (visibleTopics(researcher.id).length === 0) {
-                  <span class="muted">Temas visibles al abrir el perfil</span>
-                }
-              </div>
-            </a>
-          }
+        <div class="search-actions">
+          <button class="filters-toggle" mat-stroked-button type="button" (click)="toggleFilters()">Filtros</button>
+          <button mat-flat-button color="primary" type="submit">Buscar</button>
         </div>
-      }
+      </form>
+
+      <section class="portal-search-layout">
+        <aside class="filter-panel" [class.open]="filtersOpen()">
+          <div class="filter-panel-heading">
+            <h3>Filtros</h3>
+            @if (hasActiveFilters()) {
+              <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
+            }
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Unidad</mat-label>
+            <mat-select [formControl]="unitControl">
+              <mat-option value="all">Todas las unidades</mat-option>
+              @for (unit of unitOptions(); track unit.id) {
+                <mat-option [value]="unit.id.toString()">{{ unit.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tema o experiencia</mat-label>
+            <input matInput [formControl]="topicControl" placeholder="Ej.: genómica, IA clínica, materiales">
+          </mat-form-field>
+
+          <button mat-stroked-button type="button" (click)="applyFilters()">Aplicar filtros</button>
+        </aside>
+
+        <section class="results-panel">
+          <div class="results-summary">
+            <div>
+              <p class="section-kicker">Resultados</p>
+              <strong>{{ result().totalElements }} {{ result().totalElements === 1 ? 'perfil encontrado' : 'perfiles encontrados' }}</strong>
+            </div>
+            @if (hasActiveFilters()) {
+              <span>Filtros aplicados</span>
+            }
+          </div>
+
+          @if (loading()) {
+            <rip-loading-state message="Cargando investigadores..." />
+          } @else if (errorMessage()) {
+            <rip-error-state [message]="errorMessage()" />
+          } @else if (result().content.length === 0) {
+            <rip-empty-state title="Sin resultados" message="No se han encontrado resultados con esos filtros." />
+          } @else {
+            <div class="result-grid">
+              @for (researcher of result().content; track researcher.id) {
+                <a class="portal-result-card" [routerLink]="['/portal/investigadores', researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver a investigadores')">
+                  <div class="card-top">
+                    <span class="profile-badge">Perfil público</span>
+                    @if (researcher.orcid) {
+                      <span class="subtle-meta">ORCID {{ researcher.orcid }}</span>
+                    }
+                  </div>
+
+                  <div class="card-main">
+                    <strong>{{ researcher.displayName || researcher.fullName }}</strong>
+                    <p>{{ researcher.primaryAffiliationName || 'Afiliación pública pendiente' }}</p>
+                  </div>
+
+                  <p class="expertise-copy">{{ expertiseSummary(researcher.id) }}</p>
+
+                  <div class="topic-row">
+                    @for (topic of visibleTopics(researcher.id); track topic) {
+                      <rip-tag-chip [label]="topic" />
+                    }
+                    @if (extraTopics(researcher.id) > 0) {
+                      <span class="extra-chip">+{{ extraTopics(researcher.id) }}</span>
+                    }
+                    @if (visibleTopics(researcher.id).length === 0) {
+                      <span class="muted">Temas visibles al abrir el perfil</span>
+                    }
+                  </div>
+
+                  <div class="card-footer">
+                    <span>Actividad pública validada</span>
+                    <strong>Ver perfil</strong>
+                  </div>
+                </a>
+              }
+            </div>
+          }
+        </section>
+      </section>
 
       <div class="pagination">
         <button mat-button type="button" [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">Anterior</button>
@@ -155,60 +161,56 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
     </section>
   `,
   styles: [`
-    .portal-researchers {
-      gap: 28px;
+    :host {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
     }
 
-    .portal-intro {
-      border-radius: 28px;
+    :host * {
+      box-sizing: border-box;
     }
 
-    .intro-grid {
+    :host ::ng-deep .mat-mdc-form-field,
+    :host ::ng-deep .mat-mdc-form-field-infix {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .portal-list-page {
+      gap: 26px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .portal-list-intro {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: start;
+      gap: 10px;
+      max-width: 860px;
     }
 
-    .intro-grid h2 {
+    .portal-list-intro h2 {
       margin: 0;
       color: #102033;
-      font-size: clamp(1.55rem, 2.4vw, 2.1rem);
-      line-height: 1.14;
+      font-size: clamp(1.5rem, 2.3vw, 2.05rem);
+      line-height: 1.16;
     }
 
-    .intro-grid p {
-      margin-top: 12px;
-      max-width: 64ch;
+    .portal-list-intro p:not(.section-kicker) {
+      margin: 0;
+      color: #5f7182;
+      line-height: 1.65;
     }
 
-    .intro-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
-    .intro-pills span {
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.88);
-      border: 1px solid #d8e4eb;
-      color: #365369;
-      font-size: 0.86rem;
-      font-weight: 760;
-      white-space: nowrap;
-    }
-
-    .search-card {
-      border-radius: 24px !important;
-    }
-
-    .search-shell {
+    .portal-search-strip {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
+      gap: 14px;
       align-items: center;
+      padding: 18px;
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
     }
 
     .search-field {
@@ -223,91 +225,180 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
       gap: 10px;
     }
 
-    .advanced-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 18px;
-      margin-top: 16px;
+    :host ::ng-deep .portal-search-strip .mat-mdc-form-field-subscript-wrapper {
+      display: none;
     }
 
-    .researcher-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
+    .filters-toggle {
+      display: none;
     }
 
-    .researcher-card {
+    .portal-search-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .filter-panel,
+    .portal-result-card,
+    .results-summary {
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .filter-panel {
+      position: sticky;
+      top: 92px;
       display: grid;
       gap: 16px;
-      padding: 24px;
-      border: 1px solid #dde7ee;
-      border-radius: 24px;
-      background: linear-gradient(180deg, #ffffff, #fbfdfe);
+      padding: 18px;
+    }
+
+    .filter-panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .filter-panel h3 {
+      margin: 0;
+      color: #102033;
+      font-size: 1rem;
+    }
+
+    .results-panel {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .results-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px;
+    }
+
+    .results-summary strong {
+      display: block;
+      margin-top: 2px;
+      color: #102033;
+      font-size: 1.05rem;
+    }
+
+    .results-summary span {
+      color: #617283;
+      font-size: 0.88rem;
+      font-weight: 720;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .portal-result-card {
+      display: grid;
+      gap: 15px;
+      padding: 22px;
       color: inherit;
       text-decoration: none;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     }
 
-    .researcher-card:hover {
+    .portal-result-card:hover,
+    .portal-result-card:focus-visible {
       border-color: #a6c3d1;
-      box-shadow: 0 18px 34px rgba(20, 32, 51, 0.08);
+      box-shadow: 0 16px 30px rgba(20, 32, 51, 0.08);
       transform: translateY(-2px);
+      outline: none;
     }
 
-    .card-top {
+    .card-top,
+    .card-footer {
       display: flex;
-      align-items: start;
+      align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    .identity strong {
+    .profile-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #eef6f3;
+      color: #28624a;
+      font-size: 0.77rem;
+      font-weight: 780;
+    }
+
+    .subtle-meta {
+      color: #617283;
+      font-size: 0.82rem;
+    }
+
+    .card-main strong {
       display: block;
       color: #102033;
-      font-size: 1.16rem;
-      line-height: 1.28;
+      font-size: 1.12rem;
+      line-height: 1.3;
     }
 
-    .identity p {
+    .card-main p,
+    .expertise-copy {
       margin: 8px 0 0;
       color: #617283;
       line-height: 1.55;
     }
 
-    .orcid-link {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #f3f7fa;
-      color: #4f6575;
-      font-size: 0.76rem;
-      font-weight: 780;
-      white-space: nowrap;
+    .expertise-copy {
+      margin: 0;
+      min-height: 2.8em;
     }
 
-    .metric-row {
+    .topic-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
     }
 
-    .metric-row span,
-    .extra-chip {
-      padding: 7px 11px;
-      border-radius: 10px;
-      background: #f5f8fa;
+    .extra-chip,
+    .card-footer span {
       color: #536776;
       font-size: 0.84rem;
       font-weight: 720;
     }
 
-    .topic-block {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      min-height: 36px;
+    .extra-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f7fa;
+    }
+
+    .card-footer {
+      padding-top: 2px;
+      color: #526879;
+    }
+
+    .card-footer strong {
+      color: #23617f;
+      font-size: 0.92rem;
+    }
+
+    .muted {
+      color: #7a8997;
+      font-size: 0.88rem;
     }
 
     .pagination {
@@ -319,24 +410,46 @@ import { TagChipComponent } from '../../shared/components/tag-chip.component';
     }
 
     @media (max-width: 980px) {
-      .intro-grid,
-      .search-shell {
+      .portal-search-strip,
+      .portal-search-layout {
         grid-template-columns: 1fr;
       }
 
-      .search-actions,
-      .intro-pills {
+      .search-actions {
         justify-content: flex-start;
+        padding-top: 0;
+      }
+
+      .filters-toggle {
+        display: inline-flex;
+      }
+
+      .filter-panel {
+        position: static;
+        display: none;
+      }
+
+      .filter-panel.open {
+        display: grid;
       }
     }
 
-    @media (max-width: 720px) {
-      .card-top {
-        display: grid;
+    @media (max-width: 640px) {
+      .portal-search-strip {
+        padding: 14px;
       }
 
-      .pagination {
+      .pagination,
+      .results-summary {
         justify-content: space-between;
+      }
+
+      .search-actions {
+        justify-content: flex-start;
+      }
+
+      .result-grid {
+        grid-template-columns: 1fr;
       }
     }
   `]
@@ -358,11 +471,7 @@ export class PortalResearchersPageComponent implements OnInit {
   readonly loading = signal(true);
   readonly errorMessage = signal('');
   readonly currentPage = signal(0);
-  readonly showAdvanced = signal(false);
-  readonly headerSubtitle = computed(() => {
-    const total = this.result().totalElements;
-    return `${total} perfiles institucionales para explorar experiencia, afiliación y actividad pública`;
-  });
+  readonly filtersOpen = signal(false);
   readonly pageCount = computed(() => Math.max(this.result().totalPages, 1));
 
   ngOnInit(): void {
@@ -422,8 +531,8 @@ export class PortalResearchersPageComponent implements OnInit {
     });
   }
 
-  toggleAdvanced(): void {
-    this.showAdvanced.update((value) => !value);
+  toggleFilters(): void {
+    this.filtersOpen.update((value) => !value);
   }
 
   hasActiveFilters(): boolean {
@@ -433,30 +542,20 @@ export class PortalResearchersPageComponent implements OnInit {
   }
 
   visibleTopics(researcherId: number): string[] {
-    return this.researcherDetails()[researcherId]?.topics.slice(0, 4).map((topic) => topic.name) ?? [];
+    return this.researcherDetails()[researcherId]?.topics.slice(0, 3).map((topic) => topic.name) ?? [];
   }
 
   extraTopics(researcherId: number): number {
     const total = this.researcherDetails()[researcherId]?.topics.length ?? 0;
-    return Math.max(total - 4, 0);
+    return Math.max(total - 3, 0);
   }
 
-  publicationLabel(researcherId: number): string {
-    const detail = this.researcherDetails()[researcherId];
-    if (!detail) {
-      return 'Publicaciones: cargando';
+  expertiseSummary(researcherId: number): string {
+    const topics = this.visibleTopics(researcherId);
+    if (topics.length === 0) {
+      return 'Perfil público con experiencia y producción validada por la institución.';
     }
-    const count = detail.publications.length;
-    return count === 1 ? '1 publicación' : `${count} publicaciones`;
-  }
-
-  activityLabel(researcherId: number): string {
-    const detail = this.researcherDetails()[researcherId];
-    if (!detail) {
-      return 'Actividad: cargando';
-    }
-    const count = detail.activities.length;
-    return count === 1 ? '1 actividad visible' : `${count} actividades visibles`;
+    return `Áreas visibles: ${topics.join(', ')}.`;
   }
 
   private loadPage(page: number, text: string, topic: string, researchUnitId: string): void {
@@ -479,7 +578,7 @@ export class PortalResearchersPageComponent implements OnInit {
         },
         error: () => {
           this.loading.set(false);
-          this.errorMessage.set('No se pudo cargar el directorio público de investigadores.');
+          this.errorMessage.set('No se ha podido cargar la información.');
           this.result.set(this.emptyPage());
           this.researcherDetails.set({});
         }
@@ -534,7 +633,7 @@ export class PortalResearchersPageComponent implements OnInit {
         })
       )
       .subscribe({
-        next: (units) => this.unitOptions.set(units),
+        next: (units) => this.unitOptions.set([...units].sort((left, right) => left.name.localeCompare(right.name, 'es'))),
         error: () => this.unitOptions.set([])
       });
   }

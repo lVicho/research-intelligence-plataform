@@ -9,7 +9,6 @@ import {
   PortalNewsArticleSummary,
   PortalResearchUnitSummary,
   PortalSummary,
-  PortalResearcherSummary,
   PublicationSummary
 } from '../../core/api/api-models';
 import { NewsApiService } from '../../core/api/news-api.service';
@@ -37,21 +36,52 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           <p class="eyebrow">Portal institucional</p>
           <h1>Explora la investigación de la universidad</h1>
           <p class="hero-text">
-            Descubre publicaciones, unidades, investigadores y temas con una visión pública, validada y
-            claramente institucional.
+            Consulta unidades, investigadores, publicaciones y líneas de conocimiento a partir de información
+            pública revisada por la institución.
           </p>
           <div class="hero-actions">
             <a mat-flat-button color="primary" routerLink="/portal/publicaciones">Buscar publicaciones</a>
             <a mat-stroked-button routerLink="/portal/unidades">Explorar unidades</a>
-            <a mat-button routerLink="/portal/guia-expertos">Encontrar expertos</a>
+            <a mat-stroked-button routerLink="/portal/guia-expertos">Encontrar expertos</a>
           </div>
         </div>
 
-        <div class="hero-panel" aria-label="Resumen del portal">
-          <span>Actividad conectada</span>
-          <strong>{{ activityCount() }}</strong>
-          <p>registros públicos enlazados entre personas, publicaciones, unidades y temas institucionales.</p>
-          <a routerLink="/portal/publicaciones">Explorar publicaciones</a>
+        <div class="hero-visual" aria-label="Entradas principales del portal">
+          <span class="hero-visual-label">Descubrimiento público</span>
+          <div class="hero-paths">
+            <a routerLink="/portal/unidades">
+              <strong>Unidades</strong>
+              <span>Departamentos, institutos y grupos.</span>
+            </a>
+            <a routerLink="/portal/investigadores">
+              <strong>Investigadores</strong>
+              <span>Perfiles, afiliaciones y temas.</span>
+            </a>
+            <a routerLink="/portal/publicaciones">
+              <strong>Publicaciones</strong>
+              <span>Producción científica validada.</span>
+            </a>
+          </div>
+          <p>El portal muestra actividad pública revisada por la institución.</p>
+        </div>
+      </section>
+
+      <section class="discovery-section" aria-labelledby="portal-discovery-title">
+        <div class="section-heading">
+          <p class="section-kicker">Accesos principales</p>
+          <h2 id="portal-discovery-title">Empieza por el tipo de información que quieres explorar.</h2>
+          <p>La página inicial funciona como directorio público de las secciones principales del portal.</p>
+        </div>
+
+        <div class="discovery-grid">
+          @for (card of discoveryCards; track card.title) {
+            <a class="discovery-card" [routerLink]="card.route">
+              <span class="discovery-marker">{{ card.marker }}</span>
+              <strong>{{ card.title }}</strong>
+              <p>{{ card.description }}</p>
+              <span class="discovery-action">{{ card.action }}</span>
+            </a>
+          }
         </div>
       </section>
 
@@ -61,10 +91,6 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           <span>Publicaciones</span>
         </div>
         <div>
-          <strong>{{ activityCount() }}</strong>
-          <span>Actividad visible</span>
-        </div>
-        <div>
           <strong>{{ researcherCount() }}</strong>
           <span>Investigadores</span>
         </div>
@@ -72,33 +98,77 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           <strong>{{ unitCount() }}</strong>
           <span>Unidades</span>
         </div>
+        <div>
+          <strong>{{ topicCount() }}</strong>
+          <span>Temas</span>
+        </div>
       </section>
 
-      <section class="featured-grid primary">
+      @if (featuredNews().length > 0) {
+        <section class="news-feature">
+          <div class="news-feature-head">
+            <div>
+              <p class="section-kicker">Noticias destacadas</p>
+              <h2>Lecturas breves para seguir la actualidad científica del portal.</h2>
+            </div>
+            <a class="subtle-link" routerLink="/portal/noticias">Ver todas las noticias</a>
+          </div>
+
+          <div class="news-grid">
+            @for (article of featuredNews(); track article.id) {
+              <a
+                class="news-card"
+                [routerLink]="['/portal/noticias', article.id]"
+                [queryParams]="navigationContext.returnQueryParams('Volver al inicio')"
+              >
+                <div class="news-image" [class.news-image-empty]="!article.imageUrl">
+                  @if (article.imageUrl) {
+                    <img [src]="article.imageUrl" [alt]="article.imageAlt || article.title">
+                  } @else {
+                    <span>{{ newsBadge(article) }}</span>
+                  }
+                </div>
+
+                <div class="news-copy">
+                  <p class="news-date">{{ newsDateLabel(article.publishedAt) }}</p>
+                  <strong>{{ article.title }}</strong>
+                  <p>{{ article.summary }}</p>
+                  @if (newsContextLabel(article); as label) {
+                    <span class="news-context">{{ label }}</span>
+                  }
+                  <span class="news-link-label">Leer noticia</span>
+                </div>
+              </a>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="featured-grid primary" aria-label="Unidades y publicaciones destacadas">
         <rip-section-card
           title="Unidades destacadas"
-          subtitle="Puertas de entrada a facultades, institutos, departamentos, laboratorios y centros de la institución."
+          subtitle="Puntos de entrada a la estructura investigadora de la institución."
           eyebrow="Organización"
         >
-          <div class="unit-grid">
+          <div class="unit-list">
             @for (unit of featuredUnits(); track unit.id) {
-              <a class="unit-card" [routerLink]="['/portal/unidades', unit.id]" [queryParams]="navigationContext.returnQueryParams('Volver al inicio')">
-                <span class="unit-type">{{ typeLabel(unit.type) }}</span>
-                <strong>{{ unit.name }}</strong>
-                <p>{{ locationLabel(unit) }}</p>
-                @if (unit.shortName) {
-                  <span class="unit-short">{{ unit.shortName }}</span>
-                }
+              <a class="unit-highlight" [routerLink]="['/portal/unidades', unit.id]" [queryParams]="navigationContext.returnQueryParams('Volver al inicio')">
+                <div>
+                  <strong>{{ unit.name }}</strong>
+                  <p>{{ locationLabel(unit) }}</p>
+                </div>
+                <span>{{ unit.shortName || typeLabel(unit.type) }}</span>
               </a>
             } @empty {
               <rip-empty-state title="Sin unidades destacadas" message="Aún no hay unidades activas disponibles en el portal." />
             }
           </div>
+          <a class="section-action" routerLink="/portal/unidades">Ver unidades</a>
         </rip-section-card>
 
         <rip-section-card
           title="Publicaciones recientes"
-          subtitle="Una selección inicial para entrar en la producción científica validada de la institución."
+          subtitle="Una selección breve para entrar en la producción científica validada."
           eyebrow="Actividad reciente"
         >
           <div class="publication-list">
@@ -110,7 +180,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
                   <p>{{ publication.source || publication.doi || 'Repositorio institucional' }}</p>
                   <div class="chip-list">
                     <rip-tag-chip [label]="publicationTypeLabel(publication.type)" tone="type" />
-                    @for (topic of publication.topics.slice(0, 3); track topic) {
+                    @for (topic of publication.topics.slice(0, 2); track topic) {
                       <rip-tag-chip [label]="topic" />
                     }
                   </div>
@@ -120,46 +190,8 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
               <rip-empty-state title="Sin publicaciones visibles" message="Todavía no hay publicaciones públicas para destacar." />
             }
           </div>
+          <a class="section-action" routerLink="/portal/publicaciones">Buscar publicaciones</a>
         </rip-section-card>
-      </section>
-
-      <section class="news-feature">
-        <div class="news-feature-head">
-          <div>
-            <p class="section-kicker">Noticias destacadas</p>
-            <h2>Lecturas cortas para seguir la actualidad científica del portal.</h2>
-          </div>
-          <a class="subtle-link" routerLink="/portal/noticias">Ver todas las noticias</a>
-        </div>
-
-        <div class="news-grid">
-          @for (article of featuredNews(); track article.id) {
-            <a
-              class="news-card"
-              [routerLink]="['/portal/noticias', article.id]"
-              [queryParams]="navigationContext.returnQueryParams('Volver al inicio')"
-            >
-              <div class="news-image" [class.news-image-empty]="!article.imageUrl">
-                @if (article.imageUrl) {
-                  <img [src]="article.imageUrl" [alt]="article.imageAlt || article.title">
-                } @else {
-                  <span>{{ newsBadge(article) }}</span>
-                }
-              </div>
-
-              <div class="news-copy">
-                <p class="news-date">{{ newsDateLabel(article.publishedAt) }}</p>
-                <strong>{{ article.title }}</strong>
-                <p>{{ article.summary }}</p>
-                @if (newsContextLabel(article); as label) {
-                  <span class="news-context">{{ label }}</span>
-                }
-              </div>
-            </a>
-          } @empty {
-              <rip-empty-state title="Sin noticias destacadas" message="Cuando existan noticias publicadas aparecerán aquí." />
-          }
-        </div>
       </section>
 
       <section class="featured-grid secondary">
@@ -168,15 +200,18 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           subtitle="Áreas de conocimiento que ayudan a recorrer la actividad científica del portal."
           eyebrow="Temas"
         >
-          <div class="topic-cloud">
-            @for (topic of topTopics(); track topic.label) {
-              <button type="button" class="topic-pill" [routerLink]="['/portal/publicaciones']" [queryParams]="{ topic: topic.label }">
-                <strong>{{ topic.label }}</strong>
-                <span>{{ topic.count }}</span>
-              </button>
-            } @empty {
-              <rip-empty-state title="Sin temas destacados" message="Los temas aparecerán cuando haya suficiente contenido clasificado." />
-            }
+          <div class="topics-editorial">
+            <div class="topic-cloud">
+              @for (topic of topTopics(); track topic.label) {
+                <button type="button" class="topic-pill" [routerLink]="['/portal/publicaciones']" [queryParams]="{ topic: topic.label }">
+                  <strong>{{ topic.label }}</strong>
+                  <span>{{ topic.count }}</span>
+                </button>
+              } @empty {
+                <rip-empty-state title="Sin temas destacados" message="Los temas aparecerán cuando haya suficiente contenido clasificado." />
+              }
+            </div>
+            <a class="section-action" routerLink="/portal/publicaciones">Buscar publicaciones por tema</a>
           </div>
         </rip-section-card>
 
@@ -186,134 +221,239 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
           eyebrow="Personas y evidencia"
         >
           <div class="expert-teaser">
-            <div class="researcher-list">
-              @for (researcher of visibleResearchers(); track researcher.id) {
-                <a class="researcher-row" [routerLink]="['/portal/investigadores', researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver al inicio')">
-                  <div>
-                    <strong>{{ researcher.displayName || researcher.fullName }}</strong>
-                    <p>{{ researcher.primaryAffiliationName || 'Afiliación pública pendiente de completar' }}</p>
-                  </div>
-                  @if (researcher.orcid) {
-                    <span class="orcid-chip">ORCID</span>
-                  }
-                </a>
-              } @empty {
-                <rip-empty-state title="Sin investigadores visibles" message="Cuando existan perfiles públicos aparecerán aquí." />
+            <p>
+              Describe un tema, una necesidad de colaboración o una pregunta aplicada. La guía cruza perfiles
+              públicos con evidencia institucional validada.
+            </p>
+            <div class="query-suggestions" aria-label="Consultas sugeridas">
+              @for (suggestion of expertGuideSuggestions; track suggestion) {
+                <a [routerLink]="['/portal/guia-expertos']" [queryParams]="{ q: suggestion }">{{ suggestion }}</a>
               }
             </div>
-            <a mat-stroked-button routerLink="/portal/guia-expertos">Abrir guía de expertos</a>
+            <a class="section-action" routerLink="/portal/guia-expertos">Abrir guía de expertos</a>
           </div>
         </rip-section-card>
       </section>
-
-      <p class="trust-note">El portal muestra actividad pública revisada por la institución.</p>
     </section>
   `,
   styles: [`
-    .portal-home {
+    .portal-home,
+    .discovery-section,
+    .featured-grid,
+    .unit-list,
+    .publication-list,
+    .topics-editorial,
+    .expert-teaser {
       display: grid;
-      gap: 28px;
+      gap: 20px;
+    }
+
+    .portal-home {
+      gap: 30px;
     }
 
     .portal-hero {
+      position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 390px);
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 430px);
       gap: clamp(24px, 4vw, 54px);
-      align-items: end;
+      align-items: center;
+      min-height: 420px;
       padding: clamp(34px, 5vw, 64px) clamp(26px, 5vw, 68px);
-      border: 1px solid #d9dee6;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #ffffff 0%, #f7f9fb 62%, #eef2f5 100%);
-      box-shadow: 0 20px 48px rgba(20, 32, 51, 0.08);
+      border: 1px solid color-mix(in srgb, var(--portal-accent) 18%, var(--portal-border));
+      border-radius: 10px;
+      background: linear-gradient(115deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 251, 0.94) 47%, rgba(218, 236, 238, 0.82));
+      box-shadow: 0 18px 42px rgba(16, 37, 48, 0.08);
+      overflow: hidden;
+    }
+
+    .portal-hero::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 7px;
+      background: linear-gradient(180deg, var(--portal-accent), rgba(15, 100, 121, 0.15));
+      content: "";
     }
 
     .hero-copy,
-    .hero-panel {
+    .hero-visual,
+    .section-heading,
+    .publication-main,
+    .news-copy {
       display: grid;
-      gap: 16px;
       min-width: 0;
-      align-content: start;
+    }
+
+    .hero-copy {
+      position: relative;
+      gap: 18px;
+      max-width: 790px;
     }
 
     .eyebrow,
-    .hero-panel span {
+    .hero-visual-label {
       margin: 0;
-      color: #58697c;
+      color: var(--portal-accent);
       font-size: 0.78rem;
-      font-weight: 780;
+      font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     h1 {
+      max-width: 15ch;
       margin: 0;
-      color: #102033;
-      font-size: clamp(2.35rem, 4.8vw, 4rem);
+      color: var(--portal-text);
+      font-size: clamp(2.2rem, 4.2vw, 3.8rem);
+      font-weight: 780;
       line-height: 1.04;
-      font-weight: 760;
-      max-width: 14ch;
+    }
+
+    .hero-text,
+    .section-heading p:last-child,
+    .hero-paths span,
+    .hero-visual p,
+    .unit-highlight p,
+    .publication-main p,
+    .expert-teaser p,
+    .news-copy p:last-of-type {
+      margin: 0;
+      color: var(--portal-muted);
+      line-height: 1.55;
     }
 
     .hero-text {
-      max-width: 58ch;
-      margin: 0;
-      color: #4f5f72;
+      max-width: 62ch;
       font-size: 1.08rem;
-      line-height: 1.65;
     }
 
-    .hero-actions {
+    .hero-actions,
+    .news-feature-head,
+    .chip-list,
+    .topic-cloud,
+    .query-suggestions {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
     }
 
-    .hero-panel {
-      padding: 24px;
-      border: 1px solid #dfe5ec;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.82);
+    .hero-visual {
+      position: relative;
+      gap: 16px;
+      padding: 22px;
+      border: 1px solid rgba(15, 100, 121, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 14px 30px rgba(16, 37, 48, 0.07);
     }
 
-    .hero-panel strong {
-      color: #142033;
-      font-size: clamp(2.2rem, 5vw, 3.25rem);
-      font-weight: 760;
-      line-height: 1;
+    .hero-paths {
+      display: grid;
+      gap: 10px;
     }
 
-    .hero-panel p {
-      margin: 0;
-      color: #5f6c7d;
-      line-height: 1.55;
-    }
-
-    .hero-panel a {
-      width: fit-content;
-      color: #15364a;
-      font-weight: 760;
+    .hero-paths a {
+      display: grid;
+      gap: 4px;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(15, 100, 121, 0.12);
+      color: inherit;
       text-decoration: none;
     }
 
-    .hero-panel a:hover {
-      text-decoration: underline;
+    .hero-paths a:last-child {
+      border-bottom: 0;
+    }
+
+    .section-heading {
+      gap: 6px;
+      max-width: 820px;
+    }
+
+    .section-heading h2,
+    .news-feature-head h2 {
+      margin: 0;
+      color: var(--portal-text);
+      font-size: clamp(1.24rem, 1.8vw, 1.7rem);
+      line-height: 1.18;
+    }
+
+    .discovery-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .discovery-card {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      min-height: 218px;
+      padding: 20px;
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
+      background: var(--portal-surface);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .discovery-marker,
+    .publication-year {
+      width: fit-content;
+      border-radius: 999px;
+      background: var(--portal-accent-soft);
+      color: var(--portal-accent);
+      font-weight: 800;
+    }
+
+    .discovery-marker {
+      padding: 4px 8px;
+      font-size: 0.76rem;
+    }
+
+    .hero-paths strong,
+    .discovery-card strong,
+    .unit-highlight strong,
+    .publication-main strong,
+    .news-copy strong {
+      color: var(--portal-text);
+      font-size: 1rem;
+      line-height: 1.32;
+    }
+
+    .discovery-card strong {
+      font-size: 1.08rem;
+    }
+
+    .discovery-card p {
+      margin: 0;
+      color: var(--portal-muted);
+      line-height: 1.56;
+    }
+
+    .discovery-action,
+    .section-action,
+    .subtle-link {
+      color: var(--portal-link);
+      font-size: 0.92rem;
+      font-weight: 780;
+      text-decoration: none;
     }
 
     .metric-strip {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      border: 1px solid #dfe5ec;
-      border-radius: 12px;
-      background: #ffffff;
-      box-shadow: 0 12px 28px rgba(20, 32, 51, 0.05);
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.66);
       overflow: hidden;
     }
 
     .metric-strip div {
       display: grid;
       gap: 4px;
-      padding: 20px 24px;
-      border-right: 1px solid #e6ebf0;
+      padding: 15px 18px;
+      border-right: 1px solid color-mix(in srgb, var(--portal-border) 76%, transparent);
     }
 
     .metric-strip div:last-child {
@@ -321,159 +461,145 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
     }
 
     .metric-strip strong {
-      color: #132133;
-      font-size: 1.7rem;
-      line-height: 1;
+      color: var(--portal-text);
+      font-size: 1.38rem;
       font-weight: 780;
+      line-height: 1;
     }
 
-    .metric-strip span {
-      color: #5f6c7d;
-      font-size: 0.86rem;
+    .metric-strip span,
+    .topic-pill span {
+      color: var(--portal-muted);
+      font-size: 0.84rem;
       font-weight: 720;
     }
 
-    .featured-grid {
-      display: grid;
-      gap: 24px;
-    }
-
-    .news-feature {
-      display: grid;
-      gap: 18px;
-    }
-
-    .news-feature-head {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .section-kicker {
-      margin: 0 0 8px;
-      color: #2f6f8f;
-      font-size: 0.76rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .news-feature-head h2 {
-      margin: 0;
-      color: #132235;
-      font-size: clamp(1.2rem, 1.9vw, 1.7rem);
-      line-height: 1.15;
-    }
-
-    .subtle-link {
-      color: #174d67;
-      font-size: 0.92rem;
-      font-weight: 760;
-      text-decoration: none;
-    }
-
-    .subtle-link:hover {
-      text-decoration: underline;
-    }
-
     .featured-grid.primary {
-      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      align-items: start;
+      grid-template-columns: 1fr;
     }
 
     .featured-grid.secondary {
-      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      align-items: start;
+      grid-template-columns: 1fr;
     }
 
-    .news-grid {
-      display: grid;
+    .unit-list {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 18px;
     }
 
-    .publication-list,
-    .researcher-list {
-      display: grid;
-      gap: 14px;
-    }
-
+    .unit-highlight,
     .publication-card,
-    .researcher-row,
-    .unit-card,
     .news-card {
       color: inherit;
       text-decoration: none;
     }
 
+    .unit-highlight,
     .publication-card {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
       gap: 14px;
-      padding: 18px 0;
-      border-bottom: 1px solid #e5e9ee;
-      background: #ffffff;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      padding: 16px 18px;
+      border: 1px solid color-mix(in srgb, var(--portal-border) 78%, transparent);
+      border-radius: 8px;
+      background: var(--portal-surface);
     }
 
-    .publication-card:last-child {
-      border-bottom: 0;
+    .unit-highlight {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .unit-highlight > span,
+    .topic-pill,
+    .query-suggestions a {
+      border: 1px solid var(--portal-border);
+      border-radius: 999px;
+      color: var(--portal-link);
+    }
+
+    .unit-highlight > span {
+      max-width: 120px;
+      width: fit-content;
+      padding: 5px 9px;
+      font-size: 0.76rem;
+      font-weight: 760;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .publication-card {
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .publication-year {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: start;
+      min-width: 58px;
+      height: 32px;
+      border: 1px solid var(--portal-border);
+      font-size: 0.8rem;
+    }
+
+    .publication-main,
+    .news-copy {
+      gap: 8px;
+    }
+
+    .chip-list,
+    .topic-cloud,
+    .query-suggestions {
+      gap: 8px;
+    }
+
+    .news-feature {
+      display: grid;
+      gap: 18px;
+      padding: 24px;
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--portal-surface-muted) 48%, #ffffff);
+    }
+
+    .news-feature-head {
+      align-items: end;
+      justify-content: space-between;
+    }
+
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
     }
 
     .news-card {
       display: grid;
       grid-template-rows: auto 1fr;
-      min-height: 100%;
-      border: 1px solid #dbe4eb;
-      border-radius: 18px;
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
       overflow: hidden;
-      background: #ffffff;
-      box-shadow: 0 14px 28px rgba(20, 32, 51, 0.05);
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-    }
-
-    .publication-card:hover,
-    .researcher-row:hover,
-    .unit-card:hover,
-    .news-card:hover,
-    .topic-pill:hover {
-      border-color: #9db8c7;
-      box-shadow: 0 14px 28px rgba(20, 32, 51, 0.07);
-      transform: translateY(-2px);
-    }
-
-    .publication-card:focus-visible,
-    .researcher-row:focus-visible,
-    .unit-card:focus-visible,
-    .news-card:focus-visible,
-    .topic-pill:focus-visible,
-    .hero-panel a:focus-visible {
-      outline: 3px solid rgba(41, 91, 128, 0.18);
-      outline-offset: 3px;
+      background: var(--portal-surface);
     }
 
     .news-image {
+      display: grid;
+      place-items: center;
       aspect-ratio: 16 / 9;
-      background: #ebf1f5;
+      background: linear-gradient(135deg, #164756, #4f8793);
+      color: #ffffff;
     }
 
     .news-image img {
-      display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
 
-    .news-image-empty {
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #17384c 0%, #56768a 100%);
-      color: #ffffff;
-    }
-
     .news-image-empty span {
       padding: 8px 12px;
-      border: 1px solid rgba(255, 255, 255, 0.24);
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.12);
       font-size: 0.8rem;
@@ -481,190 +607,151 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
     }
 
     .news-copy {
-      display: grid;
-      gap: 10px;
-      padding: 18px;
-      align-content: start;
+      padding: 16px;
     }
 
     .news-date,
-    .news-context {
+    .news-context,
+    .news-link-label {
       margin: 0;
       font-size: 0.8rem;
       font-weight: 760;
     }
 
     .news-date {
-      color: #5f7485;
+      color: var(--portal-muted);
       text-transform: uppercase;
     }
 
-    .news-copy strong {
-      color: #132235;
-      font-size: 1.02rem;
-      line-height: 1.35;
+    .news-context,
+    .news-link-label {
+      color: var(--portal-link);
     }
 
-    .news-copy p:last-of-type {
-      margin: 0;
-      color: #5f7182;
-      line-height: 1.65;
-    }
-
-    .news-context {
-      color: #174d67;
-    }
-
-    .publication-year {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 60px;
-      height: 34px;
-      border-radius: 999px;
-      background: #eaf2f7;
-      color: #31566a;
-      font-size: 0.8rem;
-      font-weight: 780;
-    }
-
-    .publication-main {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .publication-main strong,
-    .unit-card strong,
-    .researcher-row strong {
-      color: #142033;
-      font-size: 1rem;
-      line-height: 1.35;
-    }
-
-    .publication-main p,
-    .unit-card p,
-    .researcher-row p {
-      margin: 0;
-      color: #657587;
-      line-height: 1.5;
-    }
-
-    .chip-list,
-    .topic-cloud {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .topic-pill {
+    .topic-pill,
+    .query-suggestions a {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 14px;
-      border: 1px solid #dbe4ea;
-      border-radius: 999px;
-      background: #ffffff;
-      color: #233044;
-      cursor: pointer;
+      min-height: 38px;
+      padding: 9px 13px;
+      background: var(--portal-surface);
       font: inherit;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      text-decoration: none;
+      cursor: pointer;
     }
 
     .topic-pill strong {
+      color: var(--portal-text);
       font-size: 0.88rem;
       font-weight: 720;
     }
 
-    .topic-pill span {
-      color: #6f7f8e;
-      font-size: 0.82rem;
-      font-weight: 760;
-    }
-
-    .unit-grid,
-    .expert-teaser {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+    .query-suggestions a {
+      background: var(--portal-accent-soft);
+      font-size: 0.9rem;
+      font-weight: 740;
     }
 
     .expert-teaser {
       grid-template-columns: 1fr;
+      align-items: start;
     }
 
-    .unit-card,
-    .researcher-row {
-      display: grid;
-      gap: 10px;
-      padding: 20px;
-      border: 1px solid #e0e8ee;
-      border-radius: 12px;
-      background: #ffffff;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    .expert-teaser p {
+      max-width: 72ch;
     }
 
-    .unit-type,
-    .unit-short,
-    .orcid-chip {
+    .section-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: fit-content;
-      padding: 4px 9px;
+      min-height: 38px;
+      margin-top: 8px;
+      padding: 8px 13px;
+      border: 1px solid var(--portal-border);
       border-radius: 999px;
-      font-size: 0.76rem;
-      font-weight: 760;
+      background: var(--portal-accent-soft);
+      line-height: 1;
     }
 
-    .unit-type {
-      background: #eef6f3;
-      color: #28624a;
+    .discovery-card,
+    .news-card,
+    .topic-pill,
+    .query-suggestions a,
+    .unit-highlight,
+    .publication-card {
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     }
 
-    .unit-short {
-      background: #eef4f7;
-      color: #31566a;
+    .discovery-card:hover,
+    .news-card:hover,
+    .topic-pill:hover,
+    .query-suggestions a:hover {
+      border-color: color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+      box-shadow: 0 12px 26px rgba(16, 37, 48, 0.08);
+      transform: translateY(-2px);
     }
 
-    .orcid-chip {
-      background: #f5f7fa;
-      color: #5b6b7a;
+    .unit-highlight:hover,
+    .publication-card:hover {
+      border-color: color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+      transform: translateX(3px);
     }
 
-    .trust-note {
-      margin: 0;
-      color: #6d7785;
-      font-size: 0.9rem;
-      line-height: 1.5;
-      text-align: center;
+    .hero-paths a:hover,
+    .subtle-link:hover,
+    .section-action:hover,
+    .discovery-card:hover .discovery-action {
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
-    @media (max-width: 1080px) {
+    a:focus-visible,
+    button:focus-visible {
+      outline: 3px solid rgba(15, 100, 121, 0.18);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 1180px) {
+      .discovery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .portal-hero,
-      .featured-grid.primary,
-      .featured-grid.secondary,
+      .unit-list,
       .news-grid {
         grid-template-columns: 1fr;
       }
 
-      .metric-strip {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .metric-strip div:nth-child(2) {
-        border-right: 0;
+      .portal-hero {
+        min-height: auto;
       }
     }
 
-    @media (max-width: 720px) {
-      .portal-hero {
-        min-width: 0;
-        padding: 24px;
-        border-radius: 14px;
+    @media (max-width: 760px) {
+      .portal-home {
+        gap: 24px;
       }
 
-      .hero-text,
-      .hero-panel p {
-        max-width: 28ch;
-        overflow-wrap: anywhere;
+      .portal-hero,
+      .news-feature {
+        padding: 22px;
+      }
+
+      h1 {
+        max-width: none;
+        font-size: clamp(2rem, 12vw, 2.55rem);
+      }
+
+      .hero-actions,
+      .discovery-grid,
+      .metric-strip,
+      .publication-card,
+      .unit-highlight,
+      .expert-teaser {
+        grid-template-columns: 1fr;
       }
 
       .hero-actions {
@@ -672,28 +759,13 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
         justify-items: start;
       }
 
-      .hero-actions a {
-        max-width: 100%;
-      }
-
-      .unit-grid,
-      .publication-card,
-      .news-grid,
-      .metric-strip {
-        grid-template-columns: 1fr;
-      }
-
       .metric-strip div {
         border-right: 0;
-        border-bottom: 1px solid #e6ebf0;
+        border-bottom: 1px solid color-mix(in srgb, var(--portal-border) 76%, transparent);
       }
 
       .metric-strip div:last-child {
         border-bottom: 0;
-      }
-
-      h1 {
-        max-width: none;
       }
     }
   `]
@@ -704,21 +776,57 @@ export class PortalHomePageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly navigationContext = inject(NavigationContextService);
 
+  readonly discoveryCards = [
+    {
+      marker: '01',
+      title: 'Unidades',
+      description: 'Explora departamentos, institutos, centros y grupos de investigación.',
+      action: 'Ver unidades',
+      route: '/portal/unidades'
+    },
+    {
+      marker: '02',
+      title: 'Investigadores',
+      description: 'Consulta perfiles públicos, temas de trabajo y producción asociada.',
+      action: 'Ver investigadores',
+      route: '/portal/investigadores'
+    },
+    {
+      marker: '03',
+      title: 'Publicaciones',
+      description: 'Busca publicaciones por texto, tema o búsqueda inteligente.',
+      action: 'Buscar publicaciones',
+      route: '/portal/publicaciones'
+    },
+    {
+      marker: '04',
+      title: 'Guía de expertos',
+      description: 'Encuentra especialistas a partir de temas o necesidades concretas.',
+      action: 'Abrir guía de expertos',
+      route: '/portal/guia-expertos'
+    }
+  ] as const;
+
+  readonly expertGuideSuggestions = [
+    'IA local en hospitales',
+    'Salud pública y clima urbano',
+    'Calidad de datos en investigación'
+  ] as const;
+
   readonly summary = signal<PortalSummary>(this.emptySummary());
-  readonly visibleResearchers = signal<PortalResearcherSummary[]>([]);
   readonly featuredNews = signal<PortalNewsArticleSummary[]>([]);
   readonly newsResearcherLabels = signal<Record<number, string>>({});
   readonly newsUnitLabels = signal<Record<number, string>>({});
 
   readonly publicationCount = computed(() => this.summary().totalValidatedPublications);
-  readonly activityCount = computed(() => this.summary().totalValidatedActivities);
   readonly researcherCount = computed(() => this.summary().totalPublicResearchers);
   readonly unitCount = computed(() => this.summary().totalPublicResearchUnits);
-  readonly recentPublications = computed(() => this.summary().recentValidatedPublications.slice(0, 4));
-  readonly featuredUnits = computed(() => this.summary().featuredResearchUnits.slice(0, 4));
+  readonly topicCount = computed(() => this.summary().topTopics.length);
+  readonly recentPublications = computed(() => this.summary().recentValidatedPublications.slice(0, 5));
+  readonly featuredUnits = computed(() => this.summary().featuredResearchUnits.slice(0, 3));
   readonly topTopics = computed(() =>
     this.summary().topTopics
-      .slice(0, 8)
+      .slice(0, 10)
       .map((topic) => ({
         label: topic.name,
         count: topic.count
@@ -732,13 +840,6 @@ export class PortalHomePageComponent implements OnInit {
         catchError(() => of(this.emptySummary()))
       )
       .subscribe((summary) => this.summary.set(summary));
-
-    this.portalApi.researchers({ size: 5 })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => this.visibleResearchers.set(result.content),
-        error: () => this.visibleResearchers.set([])
-      });
 
     this.newsApi.searchPortal({ size: 3 })
       .pipe(takeUntilDestroyed(this.destroyRef))

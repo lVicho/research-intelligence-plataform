@@ -56,6 +56,18 @@ class CopilotAnswerEvaluationServiceTest {
         assertTrue(response.warnings().contains("La respuesta cita publicaciones que no estaban en el contexto recuperado."));
     }
 
+    @Test
+    void groupedCitationMarkersAreRecognized() {
+        CopilotAnswerEvaluationResponse response = service.evaluate(new CopilotAnswerEvaluationRequest(
+            "La comparación combina dos publicaciones recuperadas [pub:203, pub:117].",
+            List.of(citation(203L), citation(117L)),
+            List.of(publication(203L), publication(117L))
+        ));
+
+        assertEquals(CopilotAnswerSupportLevel.HIGH, response.supportLevel());
+        assertTrue(response.citationIssues().isEmpty());
+    }
+
     private CopilotCitationResponse citation(Long id) {
         return new CopilotCitationResponse(
             id,
@@ -81,6 +93,8 @@ class CopilotAnswerEvaluationServiceTest {
             "Revista Demo",
             "https://example.test/publications/" + id,
             List.of("Autora " + id),
+            List.of(),
+            List.of(),
             List.of("Tema " + id),
             0.82,
             true,

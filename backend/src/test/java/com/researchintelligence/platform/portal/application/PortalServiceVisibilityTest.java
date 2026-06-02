@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.researchintelligence.platform.audit.application.ActivityAuditService;
@@ -245,6 +246,7 @@ class PortalServiceVisibilityTest {
         assertEquals(VisibilityScope.PUBLIC_VALIDATED, result.visibilityScope());
         assertEquals(true, result.validationFilterApplied());
         assertEquals(true, result.explanationAvailable());
+        verify(relatedPublicationService).findRelated(50L, 5, null, false);
     }
 
     @Test

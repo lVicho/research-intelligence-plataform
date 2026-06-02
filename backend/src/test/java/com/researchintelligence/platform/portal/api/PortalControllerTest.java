@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.researchintelligence.platform.portal.application.PortalDemoQueryService;
+import com.researchintelligence.platform.portal.application.PortalContextAssistantService;
 import com.researchintelligence.platform.portal.application.PortalService;
 import com.researchintelligence.platform.portal.application.PublicationExplanationService;
 import com.researchintelligence.platform.publications.domain.PublicationStatus;
@@ -26,6 +27,7 @@ class PortalControllerTest {
     @Test
     void publicationDetailEndpointReturnsPublicContract() throws Exception {
         PortalService portalService = mock(PortalService.class);
+        PortalContextAssistantService contextAssistantService = mock(PortalContextAssistantService.class);
         PortalDemoQueryService demoQueryService = mock(PortalDemoQueryService.class);
         PublicationExplanationService explanationService = mock(PublicationExplanationService.class);
         when(portalService.publicationDetail(10L)).thenReturn(new PortalPublicationDetailResponse(
@@ -60,7 +62,7 @@ class PortalControllerTest {
             true
         ));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-            new PortalController(portalService, demoQueryService, explanationService)
+            new PortalController(portalService, contextAssistantService, demoQueryService, explanationService)
         ).build();
 
         mockMvc.perform(get("/api/portal/publications/10"))
@@ -76,6 +78,7 @@ class PortalControllerTest {
     @Test
     void publicationExplanationEndpointReturnsStructuredResponse() throws Exception {
         PortalService portalService = mock(PortalService.class);
+        PortalContextAssistantService contextAssistantService = mock(PortalContextAssistantService.class);
         PortalDemoQueryService demoQueryService = mock(PortalDemoQueryService.class);
         PublicationExplanationService explanationService = mock(PublicationExplanationService.class);
         when(explanationService.explain(eq(10L), org.mockito.ArgumentMatchers.any(PublicationExplanationRequest.class)))
@@ -92,9 +95,9 @@ class PortalControllerTest {
                 List.of(),
                 "mock",
                 "mock-llm"
-            ));
+        ));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-            new PortalController(portalService, demoQueryService, explanationService)
+            new PortalController(portalService, contextAssistantService, demoQueryService, explanationService)
         ).build();
 
         mockMvc.perform(post("/api/portal/publications/10/explain")
@@ -114,6 +117,7 @@ class PortalControllerTest {
     @Test
     void demoQueriesEndpointDelegatesToService() throws Exception {
         PortalService portalService = mock(PortalService.class);
+        PortalContextAssistantService contextAssistantService = mock(PortalContextAssistantService.class);
         PortalDemoQueryService demoQueryService = mock(PortalDemoQueryService.class);
         PublicationExplanationService explanationService = mock(PublicationExplanationService.class);
         when(demoQueryService.generate(PortalDemoQueryContext.PUBLICATIONS, 3, true))
@@ -125,9 +129,9 @@ class PortalControllerTest {
                 List.of("pub:10", "topic:7"),
                 new PortalDemoQueryFreshnessResponse(Instant.parse("2026-05-25T10:15:30Z"), Instant.parse("2026-01-01T08:00:00Z"), 2),
                 Instant.parse("2026-05-26T09:00:00Z")
-            )));
+        )));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-            new PortalController(portalService, demoQueryService, explanationService)
+            new PortalController(portalService, contextAssistantService, demoQueryService, explanationService)
         ).build();
 
         mockMvc.perform(get("/api/portal/demo-queries")
@@ -139,5 +143,56 @@ class PortalControllerTest {
             .andExpect(jsonPath("$[0].context").value("PUBLICATIONS"))
             .andExpect(jsonPath("$[0].expectedEntityTypes[0]").value("PUBLICATION"))
             .andExpect(jsonPath("$[0].evidenceIds[0]").value("pub:10"));
+    }
+
+    @Test
+    void contextAssistantEndpointDelegatesToService() throws Exception {
+        PortalService portalService = mock(PortalService.class);
+        PortalContextAssistantService contextAssistantService = mock(PortalContextAssistantService.class);
+        PortalDemoQueryService demoQueryService = mock(PortalDemoQueryService.class);
+        PublicationExplanationService explanationService = mock(PublicationExplanationService.class);
+        when(contextAssistantService.ask(org.mockito.ArgumentMatchers.any(PortalContextAssistantRequest.class)))
+            .thenReturn(new PortalContextAssistantResponse(
+                "Respuesta basada en contexto publico.",
+                List.of(new PortalContextAssistantPublicationEvidenceResponse(
+                    10L,
+                    1,
+                    "IA local para triaje hospitalario",
+                    2026,
+                    List.of("Maya Chen"),
+                    List.of("IA clinica"),
+                    "10.123/demo",
+                    "Revista Demo",
+                    "https://example.test/publication",
+                    0.92,
+                    "/portal/publicaciones/10"
+                )),
+                List.of(),
+                List.of(),
+                List.of("El asistente solo utiliza informacion publica validada del portal."),
+                List.of(),
+                "mock",
+                "mock-llm",
+                VisibilityScope.PUBLIC_VALIDATED.name(),
+                true
+            ));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
+            new PortalController(portalService, contextAssistantService, demoQueryService, explanationService)
+        ).build();
+
+        mockMvc.perform(post("/api/portal/context-assistant/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "contextScope": "PUBLICATION_DETAIL",
+                      "targetId": 10,
+                      "question": "Que problema aborda esta publicacion?"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.answer").value("Respuesta basada en contexto publico."))
+            .andExpect(jsonPath("$.citedPublications[0].id").value(10))
+            .andExpect(jsonPath("$.visibilityScope").value("PUBLIC_VALIDATED"))
+            .andExpect(jsonPath("$.validationFilterApplied").value(true));
     }
 }

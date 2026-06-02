@@ -19,6 +19,7 @@ import { LoadingStateComponent } from '../../shared/components/loading-state.com
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TagChipComponent } from '../../shared/components/tag-chip.component';
 import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/display-labels';
+import { PortalContextAssistantComponent } from './portal-context-assistant.component';
 
 @Component({
   selector: 'rip-portal-research-unit-detail-page',
@@ -31,6 +32,7 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PortalContextAssistantComponent,
     TagChipComponent
   ],
   template: `
@@ -99,6 +101,14 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
             </div>
           </mat-card-content>
         </mat-card>
+
+        <rip-portal-context-assistant
+          contextScope="UNIT_PROFILE"
+          [targetId]="detail.unit.id"
+          triggerLabel="Preguntar sobre esta unidad"
+          contextTitle="Asistente contextual de la unidad"
+          helperText="Pregunta sobre temas, investigadores y publicaciones públicas validadas de esta unidad."
+        />
 
         <section class="content-grid">
           <mat-card appearance="outlined">

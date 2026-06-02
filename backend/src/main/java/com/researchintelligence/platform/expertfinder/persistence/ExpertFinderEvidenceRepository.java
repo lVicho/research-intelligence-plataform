@@ -37,6 +37,7 @@ public class ExpertFinderEvidenceRepository {
                    p.title as publication_title,
                    p.abstract_text as publication_abstract,
                    p.year as publication_year,
+                   p.type as publication_type,
                    p.doi as publication_doi,
                    p.source as publication_source,
                    p.url as publication_url,
@@ -55,6 +56,13 @@ public class ExpertFinderEvidenceRepository {
             left join research_units primary_ru on primary_ru.id = primary_aff.research_unit_id
             where r.active = true
             and (? = false or (r.validation_status = 'VALIDATED' and p.validation_status = 'VALIDATED'))
+            and (? = false or (
+                primary_aff.validation_status = 'VALIDATED'
+                and primary_ru.validation_status = 'VALIDATED'
+                and primary_ru.visible_in_portal = true
+                and primary_ru.organization_scope = 'INTERNAL'
+                and primary_ru.active = true
+            ))
             and (
                 cast(? as bigint) is null
                 or exists (
@@ -84,7 +92,7 @@ public class ExpertFinderEvidenceRepository {
                 )
             )
             order by r.full_name asc, p.year desc nulls last, p.title asc, t.name asc
-            """, this::mapPublicationEvidence, onlyValidated, researchUnitId, researchUnitId, onlyValidated, normalizedTopic,
+            """, this::mapPublicationEvidence, onlyValidated, onlyValidated, researchUnitId, researchUnitId, onlyValidated, normalizedTopic,
             onlyValidated, normalizedTopic, topicPattern);
     }
 
@@ -128,6 +136,13 @@ public class ExpertFinderEvidenceRepository {
                 and se.validation_status = 'VALIDATED'
                 and (ep.research_unit_id is null or ru.validation_status = 'VALIDATED')
             ))
+            and (? = false or (
+                primary_aff.validation_status = 'VALIDATED'
+                and primary_ru.validation_status = 'VALIDATED'
+                and primary_ru.visible_in_portal = true
+                and primary_ru.organization_scope = 'INTERNAL'
+                and primary_ru.active = true
+            ))
             and (
                 cast(? as bigint) is null
                 or ep.research_unit_id = cast(? as bigint)
@@ -142,7 +157,7 @@ public class ExpertFinderEvidenceRepository {
                 )
             )
             order by ep.participation_date desc nulls last, ep.created_at desc, ep.title asc
-            """, this::mapEventEvidence, onlyValidated, researchUnitId, researchUnitId, researchUnitId, onlyValidated);
+            """, this::mapEventEvidence, onlyValidated, onlyValidated, researchUnitId, researchUnitId, researchUnitId, onlyValidated);
     }
 
     private ExpertPublicationEvidenceRow mapPublicationEvidence(ResultSet resultSet, int rowNumber) throws SQLException {
@@ -161,6 +176,7 @@ public class ExpertFinderEvidenceRepository {
             resultSet.getString("publication_title"),
             resultSet.getString("publication_abstract"),
             nullableInteger(resultSet, "publication_year"),
+            resultSet.getString("publication_type"),
             resultSet.getString("publication_doi"),
             resultSet.getString("publication_source"),
             resultSet.getString("publication_url"),

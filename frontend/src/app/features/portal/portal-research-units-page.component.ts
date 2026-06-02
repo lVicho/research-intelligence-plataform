@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { forkJoin, of } from 'rxjs';
@@ -24,14 +23,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
 import { TagChipComponent } from '../../shared/components/tag-chip.component';
 import { researchUnitTypeLabel } from '../../shared/utils/display-labels';
 
-interface UnitTreeRow {
-  id: number;
-  name: string;
-  type: ResearchUnitType;
-  level: number;
-  childCount: number;
-}
-
 @Component({
   selector: 'rip-portal-research-units-page',
   standalone: true,
@@ -39,7 +30,6 @@ interface UnitTreeRow {
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     EmptyStateComponent,
@@ -49,159 +39,121 @@ interface UnitTreeRow {
     TagChipComponent
   ],
   template: `
-    <section class="page portal-directory">
+    <section class="page portal-list-page">
       <rip-page-header
         title="Unidades"
         eyebrow="Portal público"
-        [subtitle]="headerSubtitle()"
+        subtitle="Explora unidades, institutos, departamentos y grupos con información pública validada."
       />
 
-      <section class="intro-grid">
-        <mat-card appearance="outlined" class="hero-card">
-          <mat-card-content>
-            <p class="section-kicker">Directorio institucional</p>
-            <h2>Explora la estructura investigadora propia de la universidad.</h2>
-            <p class="hero-copy">
-              Este directorio reúne solo facultades, departamentos, institutos, laboratorios, grupos, centros y
-              demás unidades institucionales con información pública validada.
-            </p>
-
-            <div class="summary-strip">
-              <div class="summary-chip">
-                <strong>{{ unitCount() }}</strong>
-                <span>unidades visibles</span>
-              </div>
-              <div class="summary-chip">
-                <strong>{{ rootCount() }}</strong>
-                <span>raíces institucionales</span>
-              </div>
-              <div class="summary-chip">
-                <strong>{{ typeOptions().length }}</strong>
-                <span>tipologías</span>
-              </div>
-            </div>
-
-            <p class="trust-note">No se muestran organizaciones externas como unidades principales del portal.</p>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card appearance="outlined" class="tree-card">
-          <mat-card-header>
-            <mat-card-title>Jerarquía visible</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            @if (treeLoading()) {
-              <rip-loading-state message="Cargando jerarquía institucional" />
-            } @else if (treeRows().length === 0) {
-              <rip-empty-state title="Sin jerarquía disponible" message="Todavía no hay estructura institucional visible." />
-            } @else {
-              <div class="tree-list">
-                @for (row of treeRows().slice(0, 18); track row.id) {
-                  <a class="tree-row" [routerLink]="['/portal/unidades', row.id]" [queryParams]="navigationContext.returnQueryParams('Volver a unidades')" [style.padding-left.px]="16 + row.level * 18">
-                    <div>
-                      <strong>{{ row.name }}</strong>
-                      <p>{{ typeLabel(row.type) }}</p>
-                    </div>
-                    @if (row.childCount > 0) {
-                      <span>{{ row.childCount }} subunidades</span>
-                    }
-                  </a>
-                }
-              </div>
-            }
-          </mat-card-content>
-        </mat-card>
+      <section class="portal-list-intro">
+        <p class="section-kicker">Directorio institucional</p>
+        <h2>Unidades propias de la institución, organizadas para una exploración pública sencilla.</h2>
+        <p>
+          El portal muestra unidades internas visibles y evita mezclar organizaciones externas con el directorio
+          institucional principal.
+        </p>
       </section>
 
-      <mat-card appearance="outlined" class="search-card">
-        <mat-card-content>
-          <form class="search-shell" (ngSubmit)="applyFilters()">
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Buscar unidad</mat-label>
-              <input matInput [formControl]="searchControl" placeholder="Nombre, sigla, ciudad o país">
-            </mat-form-field>
+      <form class="portal-search-strip" (ngSubmit)="applyFilters()">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar unidades</mat-label>
+          <input matInput [formControl]="searchControl" placeholder="Buscar unidades, institutos, departamentos o grupos...">
+        </mat-form-field>
 
-            <div class="search-actions">
-              <button mat-stroked-button type="button" (click)="toggleTypeFilters()">
-                {{ showTypeFilters() ? 'Ocultar tipos' : 'Filtrar por tipo' }}
-              </button>
-              @if (hasActiveFilters()) {
-                <button mat-button type="button" (click)="clearFilters()">Limpiar</button>
-              }
-              <button mat-flat-button color="primary" type="submit">Buscar</button>
-            </div>
-          </form>
+        <div class="search-actions">
+          <button class="filters-toggle" mat-stroked-button type="button" (click)="toggleFilters()">Filtros</button>
+          <button mat-flat-button color="primary" type="submit">Buscar</button>
+        </div>
+      </form>
 
-          @if (showTypeFilters()) {
-            <div class="type-pills">
+      <section class="portal-search-layout">
+        <aside class="filter-panel" [class.open]="filtersOpen()">
+          <div class="filter-panel-heading">
+            <h3>Filtros</h3>
+            @if (hasActiveFilters()) {
+              <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
+            }
+          </div>
+
+          <div class="filter-group">
+            <span>Tipo de unidad</span>
+            <button
+              type="button"
+              class="filter-chip"
+              [class.active]="selectedType() === 'all'"
+              (click)="selectType('all')"
+            >
+              Todas
+            </button>
+            @for (type of typeOptions(); track type) {
               <button
                 type="button"
-                class="type-pill"
-                [class.active]="selectedType() === 'all'"
-                (click)="selectType('all')"
+                class="filter-chip"
+                [class.active]="selectedType() === type"
+                (click)="selectType(type)"
               >
-                Todas
+                {{ typeLabel(type) }}
               </button>
-              @for (type of typeOptions(); track type) {
-                <button
-                  type="button"
-                  class="type-pill"
-                  [class.active]="selectedType() === type"
-                  (click)="selectType(type)"
-                >
-                  {{ typeLabel(type) }}
-                </button>
+            }
+          </div>
+        </aside>
+
+        <section class="results-panel">
+          <div class="results-summary">
+            <div>
+              <p class="section-kicker">Resultados</p>
+              <strong>{{ result().totalElements }} {{ result().totalElements === 1 ? 'unidad encontrada' : 'unidades encontradas' }}</strong>
+            </div>
+            @if (hasActiveFilters()) {
+              <span>Filtros aplicados</span>
+            }
+          </div>
+
+          @if (loading()) {
+            <rip-loading-state message="Cargando unidades..." />
+          } @else if (errorMessage()) {
+            <rip-error-state [message]="errorMessage()" />
+          } @else if (result().content.length === 0) {
+            <rip-empty-state title="Sin resultados" message="No se han encontrado resultados con esos filtros." />
+          } @else {
+            <div class="result-grid">
+              @for (unit of result().content; track unit.id) {
+                <a class="portal-result-card" [routerLink]="['/portal/unidades', unit.id]" [queryParams]="navigationContext.returnQueryParams('Volver a unidades')">
+                  <div class="card-top">
+                    <span class="type-badge">{{ typeLabel(unit.type) }}</span>
+                    @if (hierarchyLabel(unit)) {
+                      <span class="subtle-meta">{{ hierarchyLabel(unit) }}</span>
+                    }
+                  </div>
+
+                  <div class="card-main">
+                    <strong>{{ unit.name }}</strong>
+                    <p>{{ unitDescription(unit) }}</p>
+                  </div>
+
+                  <div class="topic-row">
+                    @for (topic of visibleTopics(unit.id); track topic) {
+                      <rip-tag-chip [label]="topic" />
+                    }
+                    @if (extraTopics(unit.id) > 0) {
+                      <span class="extra-chip">+{{ extraTopics(unit.id) }}</span>
+                    }
+                    @if (visibleTopics(unit.id).length === 0) {
+                      <span class="muted">Temas disponibles al abrir la ficha</span>
+                    }
+                  </div>
+
+                  <div class="card-footer">
+                    <span>{{ compactCounts(unit.id) }}</span>
+                    <strong>Ver unidad</strong>
+                  </div>
+                </a>
               }
             </div>
           }
-        </mat-card-content>
-      </mat-card>
-
-      @if (loading()) {
-        <rip-loading-state message="Cargando directorio de unidades" />
-      } @else if (errorMessage()) {
-        <rip-error-state [message]="errorMessage()" />
-      } @else if (result().content.length === 0) {
-        <rip-empty-state title="Sin resultados" message="Prueba otra búsqueda o cambia el tipo de unidad." />
-      } @else {
-        <div class="unit-grid">
-          @for (unit of result().content; track unit.id) {
-            <a class="unit-card" [routerLink]="['/portal/unidades', unit.id]" [queryParams]="navigationContext.returnQueryParams('Volver a unidades')">
-              <div class="card-top">
-                <span class="unit-type">{{ typeLabel(unit.type) }}</span>
-                @if (hierarchyLabel(unit)) {
-                  <span class="unit-hierarchy">{{ hierarchyLabel(unit) }}</span>
-                }
-              </div>
-
-              <div class="card-headline">
-                <strong>{{ unit.name }}</strong>
-                @if (unit.shortName) {
-                  <p>{{ unit.shortName }}</p>
-                }
-              </div>
-
-              <p class="unit-copy">
-                {{ locationLabel(unit) }} · {{ activityLabel(unit.id) }}
-              </p>
-
-              <div class="metric-row">
-                <span>{{ researcherLabel(unit.id) }}</span>
-                <span>{{ publicationLabel(unit.id) }}</span>
-                <span>{{ childUnitLabel(unit.id) }}</span>
-              </div>
-
-              <div class="chip-list">
-                @for (topic of visibleTopics(unit.id); track topic) {
-                  <rip-tag-chip [label]="topic" />
-                } @empty {
-                  <span class="muted">Temas disponibles al abrir la ficha</span>
-                }
-              </div>
-            </a>
-          }
-        </div>
-      }
+        </section>
+      </section>
 
       <div class="pagination">
         <button mat-button type="button" [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">Anterior</button>
@@ -211,96 +163,56 @@ interface UnitTreeRow {
     </section>
   `,
   styles: [`
-    .portal-directory {
-      gap: 28px;
+    :host {
+      display: block;
       min-width: 0;
+      max-width: 100%;
     }
 
-    .intro-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-      gap: 22px;
-      align-items: start;
+    :host * {
+      box-sizing: border-box;
+    }
+
+    :host ::ng-deep .mat-mdc-form-field,
+    :host ::ng-deep .mat-mdc-form-field-infix {
       min-width: 0;
+      max-width: 100%;
     }
 
-    .hero-card,
-    .tree-card,
-    .search-card {
-      border-radius: 24px !important;
+    .portal-list-page {
+      gap: 26px;
       min-width: 0;
-    }
-
-    .hero-card {
-      background:
-        radial-gradient(circle at top right, rgba(73, 138, 171, 0.14), transparent 32%),
-        linear-gradient(160deg, #ffffff, #f6fafc 62%, #f1f7f8 100%);
-    }
-
-    .hero-card mat-card-content {
-      display: grid;
-      gap: 18px;
-    }
-
-    h2 {
-      margin: 0;
-      color: #102033;
-      font-size: clamp(1.6rem, 2.3vw, 2.3rem);
-      line-height: 1.12;
       overflow-wrap: anywhere;
     }
 
-    .hero-copy,
-    .trust-note {
-      margin: 0;
-      color: #5f7182;
-      line-height: 1.7;
-      overflow-wrap: anywhere;
-    }
-
-    .tree-list {
+    .portal-list-intro {
       display: grid;
       gap: 10px;
+      max-width: 860px;
     }
 
-    .tree-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 14px 16px;
-      border: 1px solid #dfebf0;
-      border-radius: 16px;
-      background: #ffffff;
-      color: inherit;
-      text-decoration: none;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-    }
-
-    .tree-row:hover,
-    .unit-card:hover {
-      border-color: #aac8d7;
-      box-shadow: 0 16px 32px rgba(20, 32, 51, 0.08);
-      transform: translateY(-2px);
-    }
-
-    .tree-row strong {
+    .portal-list-intro h2 {
+      margin: 0;
       color: #102033;
-      line-height: 1.3;
+      font-size: clamp(1.5rem, 2.3vw, 2.05rem);
+      line-height: 1.16;
     }
 
-    .tree-row p,
-    .tree-row span {
-      margin: 4px 0 0;
-      color: #617283;
-      font-size: 0.88rem;
+    .portal-list-intro p:not(.section-kicker) {
+      margin: 0;
+      color: #5f7182;
+      line-height: 1.65;
     }
 
-    .search-shell {
+    .portal-search-strip {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
+      gap: 14px;
       align-items: center;
+      padding: 18px;
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
     }
 
     .search-field {
@@ -315,51 +227,136 @@ interface UnitTreeRow {
       gap: 10px;
     }
 
-    .type-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
+    :host ::ng-deep .portal-search-strip .mat-mdc-form-field-subscript-wrapper {
+      display: none;
     }
 
-    .type-pill {
-      padding: 9px 14px;
+    .filters-toggle {
+      display: none;
+    }
+
+    .portal-search-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .filter-panel,
+    .portal-result-card,
+    .results-summary {
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .filter-panel {
+      position: sticky;
+      top: 92px;
+      display: grid;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .filter-panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .filter-panel h3 {
+      margin: 0;
+      color: #102033;
+      font-size: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-group > span {
+      flex: 1 0 100%;
+      color: #526879;
+      font-size: 0.84rem;
+      font-weight: 760;
+    }
+
+    .filter-chip {
+      padding: 8px 11px;
       border: 1px solid #d9e6ec;
       border-radius: 999px;
       background: #ffffff;
       color: #365369;
       font: inherit;
+      font-size: 0.88rem;
       cursor: pointer;
-      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
     }
 
-    .type-pill.active,
-    .type-pill:hover {
+    .filter-chip.active,
+    .filter-chip:hover {
       border-color: #8eb4c8;
       background: #eef7fb;
-      transform: translateY(-1px);
+      color: #173d55;
     }
 
-    .unit-grid {
+    .results-panel {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
+      gap: 18px;
       min-width: 0;
     }
 
-    .unit-card {
-      display: grid;
-      gap: 16px;
-      padding: 24px;
-      border: 1px solid #dfe8ef;
-      border-radius: 24px;
-      background: linear-gradient(180deg, #ffffff, #fbfdfe);
-      color: inherit;
-      text-decoration: none;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    .results-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px;
     }
 
-    .card-top {
+    .results-summary strong {
+      display: block;
+      margin-top: 2px;
+      color: #102033;
+      font-size: 1.05rem;
+    }
+
+    .results-summary span {
+      color: #617283;
+      font-size: 0.88rem;
+      font-weight: 720;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .portal-result-card {
+      display: grid;
+      gap: 16px;
+      padding: 22px;
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+
+    .portal-result-card:hover,
+    .portal-result-card:focus-visible {
+      border-color: #a6c3d1;
+      box-shadow: 0 16px 30px rgba(20, 32, 51, 0.08);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .card-top,
+    .card-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -367,57 +364,69 @@ interface UnitTreeRow {
       flex-wrap: wrap;
     }
 
-    .unit-type,
-    .unit-hierarchy {
+    .type-badge {
       display: inline-flex;
       align-items: center;
       padding: 5px 10px;
       border-radius: 999px;
+      background: #eef6f3;
+      color: #28624a;
       font-size: 0.77rem;
       font-weight: 780;
     }
 
-    .unit-type {
-      background: #eef6f3;
-      color: #28624a;
+    .subtle-meta {
+      color: #617283;
+      font-size: 0.82rem;
     }
 
-    .unit-hierarchy {
-      background: #eef4f8;
-      color: #305a72;
-    }
-
-    .card-headline strong {
+    .card-main strong {
       display: block;
       color: #102033;
-      font-size: 1.18rem;
-      line-height: 1.26;
+      font-size: 1.12rem;
+      line-height: 1.3;
     }
 
-    .card-headline p,
-    .unit-copy {
-      margin: 6px 0 0;
+    .card-main p {
+      margin: 8px 0 0;
       color: #617283;
       line-height: 1.55;
     }
 
-    .unit-copy {
-      margin: 0;
-    }
-
-    .metric-row {
+    .topic-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
     }
 
-    .metric-row span {
-      padding: 7px 11px;
-      border-radius: 10px;
-      background: #f5f8fa;
-      color: #506373;
+    .extra-chip,
+    .card-footer span {
+      color: #536776;
       font-size: 0.84rem;
       font-weight: 720;
+    }
+
+    .extra-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f7fa;
+    }
+
+    .card-footer {
+      padding-top: 2px;
+      color: #526879;
+    }
+
+    .card-footer strong {
+      color: #23617f;
+      font-size: 0.92rem;
+    }
+
+    .muted {
+      color: #7a8997;
+      font-size: 0.88rem;
     }
 
     .pagination {
@@ -429,27 +438,46 @@ interface UnitTreeRow {
     }
 
     @media (max-width: 980px) {
-      .intro-grid,
-      .search-shell {
+      .portal-search-strip,
+      .portal-search-layout {
         grid-template-columns: 1fr;
       }
 
       .search-actions {
         justify-content: flex-start;
+        padding-top: 0;
+      }
+
+      .filters-toggle {
+        display: inline-flex;
+      }
+
+      .filter-panel {
+        position: static;
+        display: none;
+      }
+
+      .filter-panel.open {
+        display: grid;
       }
     }
 
-      @media (max-width: 720px) {
-      .unit-grid {
-        grid-template-columns: 1fr;
+    @media (max-width: 640px) {
+      .portal-search-strip {
+        padding: 14px;
       }
 
-      .tree-row {
-        display: grid;
-      }
-
-      .pagination {
+      .pagination,
+      .results-summary {
         justify-content: space-between;
+      }
+
+      .search-actions {
+        justify-content: flex-start;
+      }
+
+      .result-grid {
+        grid-template-columns: 1fr;
       }
     }
   `]
@@ -466,23 +494,16 @@ export class PortalResearchUnitsPageComponent implements OnInit {
   readonly allUnits = signal<PortalResearchUnitSummary[]>([]);
   readonly unitDetails = signal<Record<number, PortalResearchUnitDetail>>({});
   readonly loading = signal(true);
-  readonly treeLoading = signal(true);
   readonly errorMessage = signal('');
   readonly currentPage = signal(0);
   readonly selectedType = signal<ResearchUnitType | 'all'>('all');
-  readonly showTypeFilters = signal(false);
+  readonly filtersOpen = signal(false);
 
   readonly typeOptions = computed(() =>
     Array.from(new Set(this.allUnits().map((unit) => unit.type)))
+      .sort((left, right) => this.typeLabel(left).localeCompare(this.typeLabel(right), 'es'))
   );
-  readonly unitCount = computed(() => this.allUnits().length);
-  readonly rootCount = computed(() => this.allUnits().filter((unit) => unit.parentId === null).length);
   readonly pageCount = computed(() => Math.max(this.result().totalPages, 1));
-  readonly headerSubtitle = computed(() => {
-    const total = this.result().totalElements;
-    return `${total} unidades institucionales visibles para explorar la estructura investigadora de la universidad`;
-  });
-  readonly treeRows = computed(() => this.flattenUnits(this.rootUnits(), 0));
 
   ngOnInit(): void {
     this.loadAllUnits();
@@ -534,8 +555,8 @@ export class PortalResearchUnitsPageComponent implements OnInit {
     });
   }
 
-  toggleTypeFilters(): void {
-    this.showTypeFilters.update((value) => !value);
+  toggleFilters(): void {
+    this.filtersOpen.update((value) => !value);
   }
 
   selectType(type: ResearchUnitType | 'all'): void {
@@ -551,59 +572,36 @@ export class PortalResearchUnitsPageComponent implements OnInit {
     return researchUnitTypeLabel(type);
   }
 
-  locationLabel(unit: PortalResearchUnitSummary): string {
-    return [unit.city, unit.country].filter(Boolean).join(', ') || 'Ubicación pública pendiente';
-  }
-
   hierarchyLabel(unit: PortalResearchUnitSummary): string {
     const trail = this.unitTrail(unit.id);
-    if (trail.length <= 1) {
-      return '';
-    }
-    return trail.slice(0, -1).join(' · ');
+    return trail.length > 1 ? trail.slice(0, -1).join(' · ') : '';
+  }
+
+  unitDescription(unit: PortalResearchUnitSummary): string {
+    const name = unit.shortName ? `${unit.shortName}. ` : '';
+    const location = [unit.city, unit.country].filter(Boolean).join(', ');
+    return `${name}${location || 'Información institucional pública disponible en la ficha.'}`;
   }
 
   visibleTopics(unitId: number): string[] {
-    return this.unitDetails()[unitId]?.topics.slice(0, 4).map((topic) => topic.name) ?? [];
+    return this.unitDetails()[unitId]?.topics.slice(0, 3).map((topic) => topic.name) ?? [];
   }
 
-  researcherLabel(unitId: number): string {
-    const detail = this.unitDetails()[unitId];
-    if (!detail) {
-      return 'Investigadores: cargando';
-    }
-    const count = detail.collaborationSummary.researcherCount;
-    return count === 1 ? '1 investigador' : `${count} investigadores`;
+  extraTopics(unitId: number): number {
+    const total = this.unitDetails()[unitId]?.topics.length ?? 0;
+    return Math.max(total - 3, 0);
   }
 
-  publicationLabel(unitId: number): string {
+  compactCounts(unitId: number): string {
     const detail = this.unitDetails()[unitId];
     if (!detail) {
-      return 'Publicaciones: cargando';
+      return 'Actividad pública en carga';
     }
-    const count = detail.collaborationSummary.publicationCount;
-    return count === 1 ? '1 publicación' : `${count} publicaciones`;
-  }
-
-  childUnitLabel(unitId: number): string {
-    const detail = this.unitDetails()[unitId];
-    if (!detail) {
-      return 'Subunidades: cargando';
-    }
-    const count = detail.childUnits.length;
-    return count === 0 ? 'Sin subunidades' : count === 1 ? '1 subunidad' : `${count} subunidades`;
-  }
-
-  activityLabel(unitId: number): string {
-    const detail = this.unitDetails()[unitId];
-    if (!detail) {
-      return 'Actividad pública validada en carga';
-    }
-    const activities = detail.activities.length;
-    if (activities === 0) {
-      return 'Sin actividades públicas registradas';
-    }
-    return activities === 1 ? '1 actividad pública visible' : `${activities} actividades públicas visibles`;
+    const researchers = detail.collaborationSummary.researcherCount;
+    const publications = detail.collaborationSummary.publicationCount;
+    const researcherText = researchers === 1 ? '1 investigador' : `${researchers} investigadores`;
+    const publicationText = publications === 1 ? '1 publicación' : `${publications} publicaciones`;
+    return `${researcherText} · ${publicationText}`;
   }
 
   private loadPage(page: number, text: string, type: ResearchUnitType | 'all'): void {
@@ -625,7 +623,7 @@ export class PortalResearchUnitsPageComponent implements OnInit {
         },
         error: () => {
           this.loading.set(false);
-          this.errorMessage.set('No se pudo cargar el directorio de unidades del portal.');
+          this.errorMessage.set('No se ha podido cargar la información.');
           this.result.set(this.emptyPage());
           this.unitDetails.set({});
         }
@@ -659,14 +657,12 @@ export class PortalResearchUnitsPageComponent implements OnInit {
   }
 
   private loadAllUnits(): void {
-    this.treeLoading.set(true);
     this.portalApi.researchUnits({ page: 0, size: 100 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (firstPage) => {
           if (firstPage.totalPages <= 1) {
             this.allUnits.set(firstPage.content);
-            this.treeLoading.set(false);
             return;
           }
 
@@ -681,53 +677,10 @@ export class PortalResearchUnitsPageComponent implements OnInit {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((remainingPages) => {
               this.allUnits.set([firstPage.content, ...remainingPages].flat());
-              this.treeLoading.set(false);
             });
         },
-        error: () => {
-          this.allUnits.set([]);
-          this.treeLoading.set(false);
-        }
+        error: () => this.allUnits.set([])
       });
-  }
-
-  private rootUnits(): PortalResearchUnitSummary[] {
-    return this.allUnits()
-      .filter((unit) => unit.parentId === null || !this.unitMap().has(unit.parentId))
-      .sort((left, right) => left.name.localeCompare(right.name, 'es'));
-  }
-
-  private childrenByParent(): Map<number, PortalResearchUnitSummary[]> {
-    const grouped = new Map<number, PortalResearchUnitSummary[]>();
-    for (const unit of this.allUnits()) {
-      if (unit.parentId === null) {
-        continue;
-      }
-      const current = grouped.get(unit.parentId) ?? [];
-      current.push(unit);
-      grouped.set(unit.parentId, current);
-    }
-    for (const entry of grouped.values()) {
-      entry.sort((left, right) => left.name.localeCompare(right.name, 'es'));
-    }
-    return grouped;
-  }
-
-  private flattenUnits(units: PortalResearchUnitSummary[], level: number): UnitTreeRow[] {
-    const childrenByParent = this.childrenByParent();
-    return units.flatMap((unit) => {
-      const children = childrenByParent.get(unit.id) ?? [];
-      return [
-        {
-          id: unit.id,
-          name: unit.name,
-          type: unit.type,
-          level,
-          childCount: children.length
-        },
-        ...this.flattenUnits(children, level + 1)
-      ];
-    });
   }
 
   private unitTrail(unitId: number): string[] {

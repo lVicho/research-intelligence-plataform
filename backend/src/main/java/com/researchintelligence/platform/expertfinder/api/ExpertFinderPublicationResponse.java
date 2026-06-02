@@ -6,6 +6,7 @@ public record ExpertFinderPublicationResponse(
     Long id,
     String title,
     Integer year,
+    String type,
     String doi,
     String source,
     String url,

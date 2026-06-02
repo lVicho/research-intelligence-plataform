@@ -80,6 +80,26 @@ class CopilotServiceCitationTest {
     }
 
     @Test
+    void groupedMarkersReturnAllCitedPublicationsInFirstAppearanceOrder() {
+        CopilotAnswerResponse response = serviceWithAnswer("La comparación se apoya en varias evidencias [pub:203, pub:117].")
+            .answer(requestWith(publication(203L), publication(117L)));
+
+        assertEquals(List.of(203L, 117L), response.citedPublications().stream().map(citation -> citation.id()).toList());
+        assertEquals(List.of(1, 2), response.citedPublications().stream().map(citation -> citation.citationIndex()).toList());
+    }
+
+    @Test
+    void groupedMarkersAreAcceptedByAnswerEvaluation() {
+        properties.getCopilot().setAnswerEvaluationEnabled(true);
+
+        CopilotAnswerResponse response = serviceWithAnswer("La comparación se apoya en varias evidencias [pub:203, pub:117].")
+            .answer(requestWith(publication(203L), publication(117L)));
+
+        assertNotNull(response.evaluation());
+        assertEquals(CopilotAnswerSupportLevel.HIGH, response.evaluation().supportLevel());
+    }
+
+    @Test
     void markerOutsideRetrievedContextProducesWarningAndIsNotCited() {
         CopilotAnswerResponse response = serviceWithAnswer("Esta cita no procede del contexto [pub:999].")
             .answer(requestWith(publication(203L), publication(117L)));
@@ -178,6 +198,8 @@ class CopilotServiceCitationTest {
             "Revista Demo",
             "https://example.test/publications/" + id,
             List.of("Autora " + id),
+            List.of(),
+            List.of(),
             List.of("Tema " + id),
             0.82,
             true,

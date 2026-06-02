@@ -20,8 +20,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class CopilotAnswerEvaluationService {
 
-    private static final Pattern CITATION_MARKER_PATTERN = Pattern.compile("\\[(?:pub|publication):(\\d+)]", Pattern.CASE_INSENSITIVE);
-    private static final Pattern PUB_LIKE_MARKER_PATTERN = Pattern.compile("\\[(?:pub|publication):[^\\]]*]", Pattern.CASE_INSENSITIVE);
     private static final Pattern OTHER_CITATION_LIKE_MARKER_PATTERN = Pattern.compile(
         "\\[(?:citation|source|ref|cita|referencia):[^\\]]+]|\\[\\d+]",
         Pattern.CASE_INSENSITIVE
@@ -130,19 +128,19 @@ public class CopilotAnswerEvaluationService {
 
     private Map<Long, String> citationMarkers(String answer) {
         Map<Long, String> markers = new LinkedHashMap<>();
-        Matcher matcher = CITATION_MARKER_PATTERN.matcher(answer);
-        while (matcher.find()) {
-            markers.putIfAbsent(Long.valueOf(matcher.group(1)), matcher.group());
+        for (PublicationCitationMarkers.Marker marker : PublicationCitationMarkers.extract(answer)) {
+            for (Long publicationId : marker.publicationIds()) {
+                markers.putIfAbsent(publicationId, marker.marker());
+            }
         }
         return markers;
     }
 
     private List<String> unknownCitationMarkers(String answer) {
         List<String> markers = new ArrayList<>();
-        Matcher pubLikeMatcher = PUB_LIKE_MARKER_PATTERN.matcher(answer);
-        while (pubLikeMatcher.find()) {
-            if (!CITATION_MARKER_PATTERN.matcher(pubLikeMatcher.group()).matches()) {
-                markers.add(pubLikeMatcher.group());
+        for (PublicationCitationMarkers.Marker marker : PublicationCitationMarkers.extract(answer)) {
+            if (marker.publicationIds().isEmpty()) {
+                markers.add(marker.marker());
             }
         }
         Matcher otherMatcher = OTHER_CITATION_LIKE_MARKER_PATTERN.matcher(answer);

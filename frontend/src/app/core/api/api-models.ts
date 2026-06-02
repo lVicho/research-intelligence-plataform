@@ -198,6 +198,23 @@ export interface PortalPublicationTopic {
   normalizedName: string;
 }
 
+export interface PortalPublicationSummary {
+  id: number;
+  title: string;
+  year: number | null;
+  type: PublicationType;
+  status: PublicationStatus;
+  doi: string | null;
+  source: string | null;
+  venueId: number | null;
+  publisherId: number | null;
+  isbn: string | null;
+  issn: string | null;
+  languageCode: string | null;
+  createdAt: string;
+  topics: string[];
+}
+
 export interface PortalPublicationDetail {
   id: number;
   title: string;
@@ -227,6 +244,101 @@ export interface PortalPublicationDetail {
   warnings: string[];
   explanationAvailable: boolean;
   visibilityScope: VisibilityScopeCode;
+  validationFilterApplied: boolean;
+}
+
+export type PortalPublicationExplanationStyle = 'PLAIN' | 'TECHNICAL';
+
+export interface PortalPublicationExplanationRequest {
+  style: PortalPublicationExplanationStyle;
+  language: string | null;
+}
+
+export interface PortalPublicationExplanationReference {
+  id: number;
+  label: string;
+}
+
+export interface PortalPublicationExplanation {
+  title: string;
+  plainSummary: string;
+  problemAddressed: string;
+  whyItMatters: string;
+  approach: string;
+  relatedTopics: PortalPublicationExplanationReference[];
+  relatedResearchers: PortalPublicationExplanationReference[];
+  relatedUnits: PortalPublicationExplanationReference[];
+  relatedPublications: PortalPublicationExplanationReference[];
+  warnings: string[];
+  provider: string;
+  model: string;
+}
+
+export type PortalContextAssistantScope =
+  | 'PUBLICATION_DETAIL'
+  | 'RESEARCHER_PROFILE'
+  | 'UNIT_PROFILE'
+  | 'PUBLICATION_SEARCH_RESULTS'
+  | 'EXPERT_FINDER_RESULTS';
+
+export interface PortalContextAssistantSearchRequest {
+  query: string | null;
+  mode: string | null;
+  yearFrom: number | null;
+  yearTo: number | null;
+  type: PublicationType | null;
+  status: PublicationStatus | null;
+  researchUnitId: number | null;
+  researcherId: number | null;
+  topic: string | null;
+}
+
+export interface PortalContextAssistantRequest {
+  contextScope: PortalContextAssistantScope;
+  targetId: number | null;
+  question: string;
+  searchRequest: PortalContextAssistantSearchRequest | null;
+  maxEvidence: number | null;
+}
+
+export interface PortalContextAssistantPublicationEvidence {
+  id: number;
+  citationIndex: number;
+  title: string;
+  year: number | null;
+  authors: string[];
+  topics: string[];
+  doi: string | null;
+  source: string | null;
+  url: string | null;
+  relevanceScore: number | null;
+  path: string;
+}
+
+export interface PortalContextAssistantResearcherEvidence {
+  id: number;
+  name: string;
+  affiliationName: string | null;
+  path: string;
+}
+
+export interface PortalContextAssistantUnitEvidence {
+  id: number;
+  name: string;
+  type: string | null;
+  path: string;
+}
+
+export interface PortalContextAssistantResponse {
+  answer: string;
+  citedPublications: PortalContextAssistantPublicationEvidence[];
+  citedResearchers: PortalContextAssistantResearcherEvidence[];
+  citedUnits: PortalContextAssistantUnitEvidence[];
+  evidenceSummary: string[];
+  warnings: string[];
+  provider: string;
+  model: string;
+  visibilityScope: VisibilityScopeCode | string;
   validationFilterApplied: boolean;
 }
 
@@ -1214,6 +1326,8 @@ export interface CopilotRetrievedPublication {
   source: string | null;
   url: string | null;
   authors: string[];
+  researchUnits: string[];
+  externalAffiliations: string[];
   topics: string[];
   similarityScore: number | null;
   passedThreshold: boolean;

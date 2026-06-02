@@ -13,6 +13,7 @@ import { LoadingStateComponent } from '../../shared/components/loading-state.com
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TagChipComponent } from '../../shared/components/tag-chip.component';
 import { affiliationTypeLabel, publicationTypeLabel } from '../../shared/utils/display-labels';
+import { PortalContextAssistantComponent } from './portal-context-assistant.component';
 import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
 
 @Component({
@@ -26,6 +27,7 @@ import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PortalContextAssistantComponent,
     TagChipComponent,
     ResearcherGraphComponent
   ],
@@ -87,6 +89,14 @@ import { ResearcherGraphComponent } from '../graph/researcher-graph.component';
             </div>
           </mat-card-content>
         </mat-card>
+
+        <rip-portal-context-assistant
+          contextScope="RESEARCHER_PROFILE"
+          [targetId]="detail.id"
+          triggerLabel="Preguntar sobre este investigador"
+          contextTitle="Asistente contextual del investigador"
+          helperText="Pregunta sobre sus líneas de trabajo, publicaciones públicas y colaboraciones validadas."
+        />
 
         <section class="content-grid">
           <mat-card appearance="outlined">

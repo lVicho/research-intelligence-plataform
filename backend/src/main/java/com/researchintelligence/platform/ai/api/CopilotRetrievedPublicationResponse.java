@@ -11,6 +11,8 @@ public record CopilotRetrievedPublicationResponse(
     String source,
     String url,
     List<String> authors,
+    List<String> researchUnits,
+    List<String> externalAffiliations,
     List<String> topics,
     Double similarityScore,
     boolean passedThreshold,

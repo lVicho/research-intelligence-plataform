@@ -180,6 +180,7 @@ class ExpertFinderServiceTest {
             title,
             abstractText,
             year,
+            "ARTICLE",
             null,
             "Demo",
             null,

@@ -1,90 +1,66 @@
-﻿import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, of } from 'rxjs';
 
-import { Publication, PublicationSemanticSearchResult, ResearchUnit, Researcher } from '../../core/api/api-models';
+import {
+  ExpertFinderApiService,
+  ExpertFinderResult,
+  ExpertFinderSearchResponse
+} from '../../core/api/expert-finder-api.service';
+import { PortalApiService } from '../../core/api/portal-api.service';
 import { PortalDemoQuerySuggestionsService } from '../../core/api/portal-demo-query-suggestions.service';
-import { PublicationsApiService } from '../../core/api/publications-api.service';
+import { PortalContextAssistantSearchRequest, PortalResearchUnitSummary, RetrievalMode } from '../../core/api/api-models';
 import { NavigationContextService } from '../../core/navigation/navigation-context.service';
-import { ResearchUnitsApiService } from '../../core/api/research-units-api.service';
-import { ResearchersApiService } from '../../core/api/researchers-api.service';
 import { DemoQueryChipsComponent } from '../../shared/components/demo-query-chips.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { ErrorStateComponent } from '../../shared/components/error-state.component';
 import { LoadingStateComponent } from '../../shared/components/loading-state.component';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TagChipComponent } from '../../shared/components/tag-chip.component';
+import { PortalContextAssistantComponent } from '../portal/portal-context-assistant.component';
+import {
+  ExpertFinderEvidenceDialogComponent,
+  ExpertFinderEvidenceDialogData
+} from './expert-finder-evidence-dialog.component';
 
-type ExpertFinderMode = 'STRICT' | 'BALANCED' | 'BROAD';
-type ActiveResearcherFilter = 'active' | 'all';
-
-interface ExpertEvidencePublication {
-  id: number;
-  title: string;
-  year: number | null;
-  similarityScore: number;
-  retrievalReason: string;
-  topics: string[];
-}
-
-interface ExpertMatchCard {
-  researcher: Researcher;
-  score: number;
-  scorePercent: number;
-  confidenceLabel: string;
-  explanation: string;
-  topics: string[];
-  evidencePublications: ExpertEvidencePublication[];
-}
-
-interface ExpertAggregation {
-  researcher: Researcher;
-  evidencePublications: ExpertEvidencePublication[];
-}
+type ExpertFinderMode = RetrievalMode;
 
 interface ModeConfiguration {
   label: string;
   helper: string;
-  minSimilarity: number;
   limit: number;
 }
 
 const MODE_CONFIGURATION: Record<ExpertFinderMode, ModeConfiguration> = {
   STRICT: {
     label: 'Estricto',
-    helper: 'Prioriza coincidencias directas y publicaciones muy cercanas a la consulta.',
-    minSimilarity: 0.55,
+    helper: 'Prioriza coincidencias muy directas.',
     limit: 8
   },
   BALANCED: {
     label: 'Equilibrado',
-    helper: 'Combina precisión y cobertura para devolver perfiles públicos consistentes.',
-    minSimilarity: 0.4,
+    helper: 'Combina coincidencia temática y evidencias relacionadas.',
     limit: 12
   },
   BROAD: {
     label: 'Amplio',
-    helper: 'Abre la búsqueda para explorar afinidades temáticas más abiertas.',
-    minSimilarity: 0.25,
+    helper: 'Incluye perfiles relacionados de forma más exploratoria.',
     limit: 16
   }
 };
 
 const FALLBACK_EXPERT_QUERY_EXAMPLES = [
   'IA local en hospitales',
+  'panteras y conservación',
   'salud pública y clima urbano',
-  'grafos de conocimiento y genómica',
-  'biodiversidad y corredores ecológicos',
-  'colaboración científica en salud digital'
+  'grafos de conocimiento en genómica'
 ];
 
 @Component({
@@ -94,8 +70,6 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatButtonToggleModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -104,356 +78,505 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PortalContextAssistantComponent,
     TagChipComponent
   ],
   template: `
     <section class="page expert-finder-page">
       <rip-page-header
         title="Guía de expertos"
-        [subtitle]="headerSubtitle()"
+        subtitle="Encuentra investigadores por temas, líneas de trabajo o experiencia."
         eyebrow="Portal público"
       />
 
-      <section class="surface-intro">
-        <p class="section-kicker">Búsqueda guiada</p>
-        <div class="intro-grid">
-          <div>
-            <h2>Encuentra perfiles públicos a partir de una pregunta, una línea temática o un problema concreto.</h2>
-            <p>
-              La guía combina búsqueda semántica y señales públicas del perfil del investigador para sugerir
-              expertos con evidencias concretas.
-            </p>
-          </div>
-          <div class="intro-pills">
-            <span>{{ results().length }} expertos</span>
-            <span>{{ searchedPublicationsCount() }} publicaciones de evidencia</span>
-          </div>
-        </div>
+      <section class="portal-list-intro">
+        <p class="section-kicker">Búsqueda experta</p>
+        <h2>Perfiles públicos con evidencias validadas y afinidad temática.</h2>
+        <p>
+          Describe una necesidad de investigación y usa los filtros como apoyo lateral. La guía siempre trabaja con
+          investigadores activos y evidencia pública revisada por la institución.
+        </p>
       </section>
 
-      <mat-card appearance="outlined" class="search-card">
-        <mat-card-content>
-          <form class="search-form" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
-            <mat-form-field appearance="outline" class="query-field">
-              <mat-label>Buscar expertos</mat-label>
-              <input
-                matInput
-                formControlName="query"
-                placeholder="Ej. salud pública y clima urbano"
-              >
-              <mat-hint>Describe un tema, reto o contexto de investigación.</mat-hint>
-            </mat-form-field>
+      <form class="portal-search-strip" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar expertos</mat-label>
+          <input
+            matInput
+            formControlName="query"
+            placeholder="Busca por tema, problema, técnica o área de conocimiento..."
+          >
+        </mat-form-field>
 
-            <div class="mode-block">
-              <span class="control-label">Modo</span>
-              <mat-button-toggle-group formControlName="mode" aria-label="Modo de búsqueda">
-                <mat-button-toggle value="STRICT">Estricto</mat-button-toggle>
-                <mat-button-toggle value="BALANCED">Equilibrado</mat-button-toggle>
-                <mat-button-toggle value="BROAD">Amplio</mat-button-toggle>
-              </mat-button-toggle-group>
-              <p class="mode-helper">{{ selectedModeConfig().helper }}</p>
-            </div>
-
-            <div class="filter-grid">
-              @if (researchUnits().length > 0) {
-                <mat-form-field appearance="outline">
-                  <mat-label>Unidad</mat-label>
-                  <mat-select formControlName="researchUnitId">
-                    <mat-option value="all">Todas las unidades</mat-option>
-                    @for (unit of researchUnits(); track unit.id) {
-                      <mat-option [value]="unit.id.toString()">{{ unit.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              }
-
-              <mat-form-field appearance="outline">
-                <mat-label>Perfiles</mat-label>
-                <mat-select formControlName="active">
-                  <mat-option value="active">Solo activos</mat-option>
-                  <mat-option value="all">Todos</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="example-section">
-              <rip-demo-query-chips
-                title="Consultas sugeridas"
-                [caption]="exampleQueryCaption()"
-                [queries]="exampleQueries()"
-                [disabled]="loading()"
-                (querySelected)="useExample($event)"
-              />
-            </div>
-
-            <div class="actions">
-              <button mat-button type="button" (click)="clearSearch()">Limpiar</button>
-              <button mat-flat-button color="primary" type="submit" [disabled]="searchForm.invalid || loading()">
-                Buscar
-              </button>
-            </div>
-          </form>
-        </mat-card-content>
-      </mat-card>
-
-      @if (loading()) {
-        <rip-loading-state message="Buscando expertos" />
-      } @else if (errorMessage()) {
-        <rip-error-state [message]="errorMessage()" />
-      } @else if (!hasSearched()) {
-        <rip-empty-state
-          title="Empieza con una consulta"
-          message="Prueba una pregunta temática o usa uno de los ejemplos para encontrar expertos con evidencias públicas."
-        />
-      } @else if (results().length === 0) {
-        <rip-empty-state
-          title="Sin coincidencias visibles"
-          message="No se encontraron expertos públicos con esta combinación de consulta, modo y filtros."
-        />
-      } @else {
-        <section class="results-summary">
-          <div>
-            <p class="section-kicker">Resultados</p>
-            <h3>{{ results().length }} expertos sugeridos en modo {{ selectedModeConfig().label.toLowerCase() }}</h3>
-          </div>
-          <p>
-            Las tarjetas muestran afinidad estimada a partir de publicaciones, temas públicos y afiliación
-            visible.
-          </p>
-        </section>
-
-        <div class="results-grid">
-          @for (expert of results(); track expert.researcher.id) {
-            <article class="expert-card">
-              <div class="card-header">
-                <div class="identity-block">
-                  <strong>{{ expert.researcher.displayName || expert.researcher.fullName }}</strong>
-                  <p>{{ affiliationLabel(expert.researcher) }}</p>
-                </div>
-                <div class="score-badge">
-                  <strong>{{ expert.scorePercent }}%</strong>
-                  <span>Confianza {{ expert.confidenceLabel.toLowerCase() }}</span>
-                </div>
-              </div>
-
-              <div class="meta-row">
-                <span>{{ selectedModeConfig().label }}</span>
-                <span>{{ evidenceLabel(expert.evidencePublications.length) }}</span>
-                @if (expert.researcher.orcid) {
-                  <span>ORCID</span>
-                }
-              </div>
-
-              <section class="detail-block">
-                <h4>Temas públicos</h4>
-                <div class="chip-list">
-                  @for (topic of expert.topics; track topic) {
-                    <rip-tag-chip [label]="topic" />
-                  } @empty {
-                    <span class="muted">Sin temas destacados</span>
-                  }
-                </div>
-              </section>
-
-              <section class="detail-block">
-                <h4>Publicaciones de evidencia</h4>
-                <div class="evidence-list">
-                  @for (publication of expert.evidencePublications; track publication.id) {
-                    <a class="evidence-item" [routerLink]="['/portal/publicaciones', publication.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guía de expertos')">
-                      <strong>{{ publication.title }}</strong>
-                      <span>{{ publication.year || 's. f.' }} · {{ similarityLabel(publication.similarityScore) }}</span>
-                    </a>
-                  }
-                </div>
-              </section>
-
-              <section class="detail-block">
-                <h4>Explicación</h4>
-                <p class="explanation">{{ expert.explanation }}</p>
-              </section>
-
-              <div class="card-actions">
-                <a mat-stroked-button [routerLink]="['/portal/investigadores', expert.researcher.id]" [queryParams]="navigationContext.returnQueryParams('Volver a la guía de expertos')">
-                  Ver perfil público
-                </a>
-              </div>
-            </article>
-          }
+        <div class="search-actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="searchForm.invalid || loading()">
+            Buscar
+          </button>
+          <button mat-stroked-button type="button" class="filter-toggle" (click)="toggleFilters()">
+            Filtros
+          </button>
         </div>
-      }
+      </form>
+
+      <section class="suggestions-strip">
+        <rip-demo-query-chips
+          title="Consultas sugeridas"
+          [caption]="exampleQueryCaption()"
+          [queries]="exampleQueries()"
+          [disabled]="loading()"
+          (querySelected)="useExample($event)"
+        />
+      </section>
+
+      <section class="portal-search-layout">
+        <aside class="filter-panel" [class.open]="filtersOpen()" [formGroup]="searchForm">
+          <div class="filter-panel-heading">
+            <div>
+              <p class="section-kicker">Filtros</p>
+              <h3>Acotar búsqueda</h3>
+            </div>
+            <button mat-button type="button" class="mobile-close" (click)="toggleFilters()">Cerrar</button>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Unidad</mat-label>
+            <mat-select formControlName="researchUnitId">
+              <mat-option value="all">Todas las unidades</mat-option>
+              @for (unit of researchUnits(); track unit.id) {
+                <mat-option [value]="unit.id.toString()">{{ unit.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <details class="advanced-options">
+            <summary>Opciones avanzadas</summary>
+            <div class="mode-choice-group" role="group" aria-label="Modo de búsqueda">
+              @for (mode of modeEntries; track mode.value) {
+                <button
+                  type="button"
+                  class="mode-choice"
+                  [class.selected]="selectedMode() === mode.value"
+                  (click)="selectMode(mode.value)"
+                >
+                  {{ mode.config.label }}
+                </button>
+              }
+            </div>
+
+            <div class="mode-explainer">
+              @for (mode of modeEntries; track mode.value) {
+                <p>
+                  <strong>{{ mode.config.label }}:</strong>
+                  {{ mode.config.helper }}
+                </p>
+              }
+            </div>
+          </details>
+
+          <button mat-button type="button" class="clear-button" (click)="clearSearch()">Limpiar búsqueda</button>
+        </aside>
+
+        <main class="results-panel">
+          @if (publicWarnings().length > 0) {
+            <section class="info-panel">
+              @for (warning of publicWarnings(); track warning) {
+                <p>{{ warning }}</p>
+              }
+            </section>
+          }
+
+          @if (loading()) {
+            <rip-loading-state message="Buscando expertos..." />
+          } @else if (errorMessage()) {
+            <rip-error-state message="No se ha podido cargar la guía de expertos." />
+          } @else if (!hasSearched()) {
+            <rip-empty-state
+              title="Empieza con una consulta"
+              message="Usa una búsqueda temática o una sugerencia para encontrar perfiles con evidencia pública."
+            />
+          } @else if (results().length === 0) {
+            <rip-empty-state
+              title="Sin resultados"
+              message="No se han encontrado expertos con esos criterios. Prueba a limpiar filtros o usar una búsqueda más amplia."
+            />
+          } @else {
+            <section class="results-summary">
+              <div>
+                <p class="section-kicker">Resultados</p>
+                <h3>{{ results().length }} expertos encontrados</h3>
+              </div>
+              <p>Ordenados por afinidad con la búsqueda.</p>
+            </section>
+
+            <rip-portal-context-assistant
+              contextScope="EXPERT_FINDER_RESULTS"
+              [searchRequest]="expertAssistantSearchRequest()"
+              triggerLabel="Preguntar a los candidatos"
+              contextTitle="Preguntas sobre los candidatos de esta búsqueda"
+              helperText="Pregunta por comparaciones, fortalezas o evidencias de los candidatos calculados por la guía de expertos."
+              [maxEvidence]="16"
+            />
+
+            <div class="results-list">
+              @for (expert of results(); track expert.researcher.id) {
+                <article class="expert-card">
+                  <div class="expert-card-header">
+                    <div class="identity-block">
+                      <strong>{{ expert.researcher.displayName || expert.researcher.fullName }}</strong>
+                      <p>{{ affiliationLabel(expert) }}</p>
+                    </div>
+                    <div class="affinity-badge">
+                      <span>Afinidad</span>
+                      <strong>{{ affinityLabel(expert.score) }}</strong>
+                    </div>
+                  </div>
+
+                  <p class="explanation">{{ publicExplanation(expert) }}</p>
+
+                  <div class="meta-row">
+                    @if (expert.researcher.orcid) {
+                      <span>ORCID</span>
+                    }
+                    <span>{{ evidenceLabel(expert) }}</span>
+                    @if (expert.confidence) {
+                      <span>{{ confidenceLabel(expert.confidence) }}</span>
+                    }
+                  </div>
+
+                  <div class="topic-row">
+                    @for (topic of visibleTopics(expert); track topic) {
+                      <rip-tag-chip [label]="topic" />
+                    }
+                    @if (hiddenTopicCount(expert) > 0) {
+                      <span class="more-chip">+{{ hiddenTopicCount(expert) }}</span>
+                    }
+                  </div>
+
+                  <div class="card-actions">
+                    <a
+                      mat-stroked-button
+                      [routerLink]="['/portal/investigadores', expert.researcher.id]"
+                      [queryParams]="navigationContext.returnQueryParams('Volver a la guía de expertos')"
+                    >
+                      Ver perfil
+                    </a>
+                    <button mat-flat-button color="primary" type="button" (click)="openEvidence(expert)">
+                      Ver evidencias
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </main>
+      </section>
     </section>
   `,
   styles: [`
+    :host {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    :host * {
+      box-sizing: border-box;
+    }
+
+    :host ::ng-deep .mat-mdc-form-field,
+    :host ::ng-deep .mat-mdc-form-field-infix {
+      min-width: 0;
+      max-width: 100%;
+    }
+
     .expert-finder-page {
       display: grid;
-      gap: 28px;
+      gap: 26px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
     }
 
-    .surface-intro,
-    .search-card,
-    .results-summary,
-    .expert-card {
-      border-radius: 14px !important;
+    .portal-list-intro {
+      display: grid;
+      gap: 10px;
+      width: 100%;
+      max-width: 900px;
+      min-width: 0;
     }
 
-    .intro-grid {
+    .portal-list-intro h2 {
+      margin: 0;
+      color: #102033;
+      font-size: clamp(1.5rem, 2.3vw, 2.05rem);
+      line-height: 1.16;
+    }
+
+    .portal-list-intro p:not(.section-kicker) {
+      margin: 0;
+      color: #5f7182;
+      line-height: 1.65;
+    }
+
+    .portal-search-strip {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: start;
+      gap: 14px;
+      align-items: center;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
     }
 
-    .intro-grid h2,
-    .results-summary h3 {
-      margin: 0;
-      color: #132133;
-      line-height: 1.18;
-    }
-
-    .intro-grid h2 {
-      font-size: clamp(1.45rem, 2.4vw, 1.9rem);
-    }
-
-    .intro-grid p,
-    .results-summary p {
-      margin: 0;
-      color: #637486;
-      line-height: 1.6;
-    }
-
-    .intro-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
-    .intro-pills span,
-    .meta-row span {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.84);
-      border: 1px solid #d8e4eb;
-      color: #365369;
-      font-size: 0.84rem;
-      font-weight: 760;
-      white-space: nowrap;
-    }
-
-    .search-card mat-card-content {
-      display: grid;
-      gap: 20px;
-    }
-
-    .search-form {
-      display: grid;
-      gap: 18px;
-    }
-
-    .query-field {
+    .search-field {
       width: 100%;
     }
 
-    .mode-block,
-    .example-section {
-      display: grid;
-      gap: 10px;
+    :host ::ng-deep .portal-search-strip .mat-mdc-form-field-subscript-wrapper {
+      display: none;
     }
 
-    .control-label {
-      color: #627587;
-      font-size: 0.8rem;
-      font-weight: 780;
-      text-transform: uppercase;
-    }
-
-    .mode-helper {
-      margin: 0;
-      color: #667487;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
-    .filter-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-    }
-
-    .prompt-chips,
-    .chip-list,
-    .meta-row {
+    .search-actions,
+    .card-actions,
+    .meta-row,
+    .topic-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
     }
 
-    .prompt-chip {
+    .search-actions {
+      justify-content: flex-end;
+      min-width: 0;
+    }
+
+    .search-actions button {
+      min-width: 0;
+    }
+
+    .filter-toggle,
+    .mobile-close {
+      display: none;
+    }
+
+    .suggestions-strip {
+      margin-top: -12px;
       max-width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #d7e0ea;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    :host ::ng-deep rip-demo-query-chips,
+    :host ::ng-deep rip-demo-query-chips .demo-query-block,
+    :host ::ng-deep rip-demo-query-chips .chip-row {
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    :host ::ng-deep rip-demo-query-chips .query-chip {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .portal-search-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .filter-panel,
+    .results-summary,
+    .expert-card,
+    .info-panel {
+      border: 1px solid #dce7ed;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .filter-panel {
+      position: sticky;
+      top: 92px;
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+      padding: 18px;
+    }
+
+    .filter-panel-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .filter-panel h3,
+    .results-summary h3,
+    .identity-block strong,
+    .advanced-options summary,
+    .mode-explainer p,
+    .explanation,
+    .info-panel p {
+      margin: 0;
+    }
+
+    .filter-panel h3,
+    .results-summary h3 {
+      color: #132133;
+      line-height: 1.2;
+    }
+
+    .section-kicker {
+      margin: 0 0 4px;
+      color: var(--portal-accent-700, #245b73);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .advanced-options {
+      display: grid;
+      gap: 14px;
+      padding-top: 4px;
+    }
+
+    .advanced-options summary {
+      cursor: pointer;
+      color: #526879;
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .advanced-options[open] {
+      display: grid;
+      padding: 14px;
+      border: 1px solid #dce7ed;
+      border-radius: 14px;
+      background: #f8fafb;
+    }
+
+    .advanced-options[open] summary {
+      margin-bottom: 12px;
+    }
+
+    .mode-choice-group {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid #d8e4eb;
       border-radius: 999px;
       background: #ffffff;
-      color: #324155;
+    }
+
+    .mode-choice {
+      min-width: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #536776;
       cursor: pointer;
       font: inherit;
-      font-size: 0.86rem;
-      line-height: 1.25;
-      text-align: left;
-      transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+      font-size: 0.82rem;
+      font-weight: 780;
+      line-height: 1.2;
+      text-align: center;
+      transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
     }
 
-    .prompt-chip:hover,
-    .evidence-item:hover,
-    .expert-card:hover {
-      border-color: #9dc1d1;
+    .mode-choice.selected {
+      background: var(--portal-accent-700, #245b73);
+      color: #ffffff;
+      box-shadow: 0 8px 16px rgba(20, 32, 51, 0.12);
+    }
+
+    .mode-explainer {
+      display: grid;
+      gap: 8px;
+      color: #607286;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .mode-explainer strong {
+      color: #26394c;
+    }
+
+    .clear-button {
+      justify-self: start;
+    }
+
+    .results-panel {
+      display: grid;
+      gap: 16px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .info-panel {
+      display: grid;
+      gap: 6px;
+      padding: 14px 16px;
       background: #f6fbfd;
-      transform: translateY(-1px);
     }
 
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
+    .info-panel p,
+    .results-summary p,
+    .identity-block p,
+    .explanation {
+      color: #607286;
+      line-height: 1.55;
     }
 
     .results-summary {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
-      gap: 18px;
-      align-items: end;
-      padding: 20px 22px;
-      border: 1px solid #dce6ed;
-      border-radius: 14px;
-      background: #ffffff;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px;
     }
 
-    .results-grid {
+    .results-summary p {
+      margin: 0;
+    }
+
+    .results-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 18px;
+      gap: 14px;
+      min-width: 0;
     }
 
     .expert-card {
       display: grid;
-      gap: 16px;
-      padding: 22px;
-      border: 1px solid #dfe7ed;
-      border-radius: 12px;
-      background: #ffffff;
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      gap: 14px;
+      min-width: 0;
+      padding: 20px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     }
 
     .expert-card:hover {
+      border-color: #9dc1d1;
       box-shadow: 0 16px 32px rgba(20, 32, 51, 0.08);
+      transform: translateY(-1px);
     }
 
-    .card-header {
+    .expert-card-header {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
+      gap: 14px;
       align-items: start;
     }
 
@@ -464,155 +587,186 @@ const FALLBACK_EXPERT_QUERY_EXAMPLES = [
     }
 
     .identity-block strong {
-      color: #142033;
-      font-size: 1.08rem;
-      line-height: 1.3;
+      color: #132133;
+      font-size: 1.12rem;
+      line-height: 1.28;
       overflow-wrap: anywhere;
     }
 
     .identity-block p {
       margin: 0;
-      color: #667487;
-      line-height: 1.5;
     }
 
-    .score-badge {
+    .affinity-badge {
       display: grid;
-      gap: 4px;
-      min-width: 118px;
-      padding: 12px 14px;
-      border: 1px solid #dfe7ed;
-      border-radius: 10px;
+      gap: 3px;
+      min-width: 96px;
+      padding: 10px 12px;
+      border: 1px solid #d8e4eb;
+      border-radius: 8px;
       background: #f8fafb;
       text-align: right;
     }
 
-    .score-badge strong {
-      color: #174d67;
-      font-size: 1.2rem;
+    .affinity-badge span {
+      color: #607286;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .affinity-badge strong {
+      color: var(--portal-accent-700, #245b73);
+      font-size: 1.05rem;
       line-height: 1;
     }
 
-    .score-badge span {
-      color: #466174;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .detail-block {
-      display: grid;
-      gap: 10px;
-    }
-
-    .detail-block h4 {
-      margin: 0;
-      color: #233447;
-      font-size: 0.9rem;
-      font-weight: 780;
-    }
-
-    .evidence-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .evidence-item {
-      display: grid;
-      gap: 4px;
-      padding: 12px 14px;
-      border: 1px solid #e3eaf0;
-      border-radius: 10px;
-      background: #ffffff;
-      color: inherit;
-      text-decoration: none;
-      transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
-    }
-
-    .evidence-item strong {
-      color: #142033;
-      font-size: 0.94rem;
-      line-height: 1.35;
-    }
-
-    .evidence-item span,
-    .explanation,
-    .muted {
-      color: #667487;
-      font-size: 0.88rem;
-      line-height: 1.55;
-    }
-
     .explanation {
-      margin: 0;
+      max-width: 76ch;
+    }
+
+    .meta-row span,
+    .more-chip {
+      padding: 6px 10px;
+      border: 1px solid #d8e4eb;
+      border-radius: 999px;
+      background: #f8fafb;
+      color: #365369;
+      font-size: 0.78rem;
+      font-weight: 760;
+      line-height: 1.2;
     }
 
     .card-actions {
-      display: flex;
       justify-content: flex-start;
+      padding-top: 2px;
     }
 
-    @media (max-width: 760px) {
-      .intro-grid,
-      .results-summary,
-      .card-header {
+    @media (max-width: 900px) {
+      .portal-search-strip,
+      .portal-search-layout,
+      .expert-card-header {
         grid-template-columns: 1fr;
       }
 
-      .intro-pills {
-        justify-content: flex-start;
+      .search-actions {
+        justify-content: stretch;
       }
 
-      .score-badge {
+      .search-actions button,
+      .card-actions a,
+      .card-actions button {
+        flex: 1 1 auto;
+      }
+
+      .filter-toggle,
+      .mobile-close {
+        display: inline-flex;
+      }
+
+      .filter-panel {
+        position: static;
+        display: none;
+      }
+
+      .filter-panel.open {
+        display: grid;
+      }
+
+      .affinity-badge {
+        width: fit-content;
         text-align: left;
       }
+    }
 
-      .actions {
-        justify-content: stretch;
+    @media (max-width: 520px) {
+      :host,
+      .expert-finder-page,
+      .portal-list-intro,
+      .portal-search-strip,
+      .suggestions-strip,
+      .portal-search-layout,
+      .results-panel,
+      .results-summary,
+      .expert-card {
+        width: calc(100vw - 96px);
+        max-width: calc(100vw - 96px);
+      }
+
+      .portal-search-strip,
+      .filter-panel,
+      .results-summary,
+      .expert-card {
+        padding: 16px;
+      }
+
+      .filter-panel {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .search-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        width: 100%;
+      }
+
+      .search-actions button {
+        width: 100%;
+      }
+
+      .mode-choice-group {
+        grid-template-columns: 1fr;
+        border-radius: 14px;
+      }
+
+      .card-actions {
+        align-items: stretch;
+        flex-direction: column;
       }
     }
   `]
 })
 export class ExpertFinderPageComponent implements OnInit {
-  private readonly publicationsApi = inject(PublicationsApiService);
-  private readonly researchersApi = inject(ResearchersApiService);
-  private readonly researchUnitsApi = inject(ResearchUnitsApiService);
+  private readonly expertFinderApi = inject(ExpertFinderApiService);
+  private readonly portalApi = inject(PortalApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly demoQuerySuggestions = inject(PortalDemoQuerySuggestionsService);
   readonly navigationContext = inject(NavigationContextService);
 
-  readonly results = signal<ExpertMatchCard[]>([]);
-  readonly researchUnits = signal<ResearchUnit[]>([]);
+  readonly results = signal<ExpertFinderResult[]>([]);
+  readonly researchUnits = signal<PortalResearchUnitSummary[]>([]);
   readonly exampleQueries = signal<string[]>(FALLBACK_EXPERT_QUERY_EXAMPLES);
   readonly exampleQueriesDynamic = signal(false);
   readonly loading = signal(false);
   readonly hasSearched = signal(false);
   readonly errorMessage = signal('');
-  readonly searchedPublicationsCount = signal(0);
+  readonly responseWarnings = signal<string[]>([]);
+  readonly filtersOpen = signal(false);
   readonly selectedMode = signal<ExpertFinderMode>('BALANCED');
-  readonly selectedModeConfig = computed(() => MODE_CONFIGURATION[this.selectedMode()]);
-  readonly headerSubtitle = computed(() => this.hasSearched()
-    ? `${this.results().length} perfiles sugeridos con evidencia pública`
-    : 'Localiza expertos a partir de publicaciones, temas y afinidad semántica visibles en el portal.');
+  readonly publicWarnings = computed(() =>
+    this.responseWarnings()
+      .map((warning) => this.publicWarning(warning))
+      .filter((warning): warning is string => !!warning)
+  );
   readonly exampleQueryCaption = computed(() => this.exampleQueriesDynamic() ? 'Inspiradas en los datos del portal' : '');
+  readonly modeEntries = Object.entries(MODE_CONFIGURATION).map(([value, config]) => ({
+    value: value as ExpertFinderMode,
+    config
+  }));
 
   readonly searchForm = new FormGroup({
     query: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(3)] }),
     mode: new FormControl<ExpertFinderMode>('BALANCED', { nonNullable: true }),
-    researchUnitId: new FormControl('all', { nonNullable: true }),
-    active: new FormControl<ActiveResearcherFilter>('active', { nonNullable: true })
+    researchUnitId: new FormControl('all', { nonNullable: true })
   });
 
   ngOnInit(): void {
     this.loadDemoQueries();
-
-    this.researchUnitsApi.list()
-      .pipe(
-        catchError(() => of([] as ResearchUnit[])),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((units) => this.researchUnits.set(units.filter((unit) => unit.active)));
+    this.loadResearchUnits();
 
     this.searchForm.controls.mode.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -624,21 +778,16 @@ export class ExpertFinderPageComponent implements OnInit {
         const query = params.get('q') ?? '';
         const mode = this.toMode(params.get('mode'));
         const researchUnitId = params.get('researchUnitId') ?? 'all';
-        const active = this.toActiveFilter(params.get('active'));
 
         this.selectedMode.set(mode);
-        this.searchForm.patchValue({ query, mode, researchUnitId, active }, { emitEvent: false });
+        this.searchForm.patchValue({ query, mode, researchUnitId }, { emitEvent: false });
 
         if (query.trim().length < 3) {
-          this.loading.set(false);
-          this.hasSearched.set(false);
-          this.errorMessage.set('');
-          this.results.set([]);
-          this.searchedPublicationsCount.set(0);
+          this.resetResults();
           return;
         }
 
-        this.runSearch(query.trim(), mode, this.toNumber(researchUnitId), active);
+        this.runSearch(query.trim(), mode, this.toNumber(researchUnitId));
       });
   }
 
@@ -653,8 +802,7 @@ export class ExpertFinderPageComponent implements OnInit {
       queryParams: {
         q: value.query.trim() || null,
         mode: value.mode === 'BALANCED' ? null : value.mode,
-        researchUnitId: value.researchUnitId === 'all' ? null : value.researchUnitId,
-        active: value.active === 'active' ? null : value.active
+        researchUnitId: value.researchUnitId === 'all' ? null : value.researchUnitId
       },
       queryParamsHandling: 'merge'
     });
@@ -664,8 +812,7 @@ export class ExpertFinderPageComponent implements OnInit {
     this.searchForm.reset({
       query: '',
       mode: 'BALANCED',
-      researchUnitId: 'all',
-      active: 'active'
+      researchUnitId: 'all'
     });
     this.selectedMode.set('BALANCED');
     void this.router.navigate([], {
@@ -673,8 +820,7 @@ export class ExpertFinderPageComponent implements OnInit {
       queryParams: {
         q: null,
         mode: null,
-        researchUnitId: null,
-        active: null
+        researchUnitId: null
       },
       queryParamsHandling: 'merge'
     });
@@ -685,18 +831,98 @@ export class ExpertFinderPageComponent implements OnInit {
     this.submitSearch();
   }
 
-  affiliationLabel(researcher: Researcher): string {
-    return researcher.primaryAffiliation?.researchUnitName
-      ?? researcher.currentAffiliations[0]?.researchUnitName
-      ?? 'Afiliación pública no disponible';
+  toggleFilters(): void {
+    this.filtersOpen.update((open) => !open);
   }
 
-  evidenceLabel(count: number): string {
-    return count === 1 ? '1 publicación de evidencia' : `${count} publicaciones de evidencia`;
+  selectMode(mode: ExpertFinderMode): void {
+    this.searchForm.controls.mode.setValue(mode);
+    this.selectedMode.set(mode);
   }
 
-  similarityLabel(score: number): string {
-    return `${Math.round(score * 100)}% de afinidad`;
+  expertAssistantSearchRequest(): PortalContextAssistantSearchRequest {
+    const value = this.searchForm.getRawValue();
+    return {
+      query: value.query.trim() || null,
+      mode: value.mode,
+      yearFrom: null,
+      yearTo: null,
+      type: null,
+      status: null,
+      researchUnitId: this.toNumber(value.researchUnitId),
+      researcherId: null,
+      topic: null
+    };
+  }
+
+  openEvidence(expert: ExpertFinderResult): void {
+    this.dialog.open<ExpertFinderEvidenceDialogComponent, ExpertFinderEvidenceDialogData>(
+      ExpertFinderEvidenceDialogComponent,
+      {
+        width: 'min(760px, calc(100vw - 32px))',
+        maxWidth: 'calc(100vw - 32px)',
+        data: {
+          expert,
+          returnQueryParams: this.navigationContext.returnQueryParams('Volver a la guía de expertos')
+        }
+      }
+    );
+  }
+
+  affiliationLabel(expert: ExpertFinderResult): string {
+    return expert.researcher.primaryResearchUnitName || 'Afiliación institucional pública';
+  }
+
+  affinityLabel(score: number): string {
+    const normalized = this.normalizeScore(score);
+    if (normalized >= 0.65) {
+      return 'Alta';
+    }
+    if (normalized >= 0.35) {
+      return 'Media';
+    }
+    return `${Math.round(normalized * 100)}%`;
+  }
+
+  confidenceLabel(value: string): string {
+    if (value === 'HIGH') {
+      return 'Confianza alta';
+    }
+    if (value === 'MEDIUM') {
+      return 'Confianza media';
+    }
+    return 'Evidencia limitada';
+  }
+
+  evidenceLabel(expert: ExpertFinderResult): string {
+    const publicationCount = expert.representativePublications.length;
+    const eventCount = expert.relevantEventParticipations.length;
+    const parts = [];
+    if (publicationCount > 0) {
+      parts.push(publicationCount === 1 ? '1 publicación' : `${publicationCount} publicaciones`);
+    }
+    if (eventCount > 0) {
+      parts.push(eventCount === 1 ? '1 evento' : `${eventCount} eventos`);
+    }
+    return parts.length > 0 ? parts.join(' · ') : 'Evidencia limitada';
+  }
+
+  visibleTopics(expert: ExpertFinderResult): string[] {
+    return expert.matchedTopics.slice(0, 3);
+  }
+
+  hiddenTopicCount(expert: ExpertFinderResult): number {
+    return Math.max(expert.matchedTopics.length - 3, 0);
+  }
+
+  publicExplanation(expert: ExpertFinderResult): string {
+    const name = expert.researcher.displayName || expert.researcher.fullName;
+    if (expert.explanation.toLowerCase().includes('baja confianza')) {
+      return `${name} aparece con evidencia pública limitada para esta búsqueda. Revisa las evidencias antes de contactar.`;
+    }
+    return expert.explanation
+      .replace('destaca por evidencia trazable:', 'aparece por evidencia pública relacionada:')
+      .replace('Solo se ha usado evidencia validada.', 'Solo se ha usado evidencia pública validada.');
   }
 
   private loadDemoQueries(): void {
@@ -711,314 +937,92 @@ export class ExpertFinderPageComponent implements OnInit {
       });
   }
 
-  private runSearch(
-    query: string,
-    mode: ExpertFinderMode,
-    researchUnitId: number | undefined,
-    activeFilter: ActiveResearcherFilter
-  ): void {
+  private loadResearchUnits(): void {
+    this.portalApi.researchUnits({ page: 0, size: 100 })
+      .pipe(
+        catchError(() => of({
+          content: [] as PortalResearchUnitSummary[],
+          page: 0,
+          size: 100,
+          totalElements: 0,
+          totalPages: 0,
+          last: true,
+          visibilityScope: 'PUBLIC_VALIDATED',
+          validationFilterApplied: true
+        })),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((response) => this.researchUnits.set(response.content.filter((unit) => unit.active)));
+  }
+
+  private runSearch(query: string, mode: ExpertFinderMode, researchUnitId: number | null): void {
     const modeConfig = MODE_CONFIGURATION[mode];
     this.loading.set(true);
     this.hasSearched.set(true);
     this.errorMessage.set('');
     this.results.set([]);
-    this.searchedPublicationsCount.set(0);
+    this.responseWarnings.set([]);
 
-    this.publicationsApi.semanticSearch({
+    this.expertFinderApi.search({
       query,
       limit: modeConfig.limit,
-      minSimilarity: modeConfig.minSimilarity,
-      includeNonValidated: false
+      mode,
+      filters: {
+        researchUnitId,
+        topic: null,
+        onlyValidated: true
+      }
     })
-      .pipe(
-        switchMap((semanticResults) => this.loadSemanticContext(semanticResults)),
-        map(({ semanticResults, publications, researchers }) => {
-          this.searchedPublicationsCount.set(semanticResults.length);
-          return this.buildExpertCards(query, mode, researchUnitId, activeFilter, semanticResults, publications, researchers);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (results) => {
-          this.results.set(results);
-          this.loading.set(false);
-        },
+        next: (response) => this.applyResponse(response),
         error: () => {
           this.results.set([]);
+          this.responseWarnings.set([]);
           this.loading.set(false);
-          this.errorMessage.set('No se pudo cargar la guía de expertos en este momento.');
+          this.errorMessage.set('No se ha podido cargar la guía de expertos.');
         }
       });
   }
 
-  private loadSemanticContext(semanticResults: PublicationSemanticSearchResult[]) {
-    if (semanticResults.length === 0) {
-      return of({
-        semanticResults,
-        publications: [] as Publication[],
-        researchers: [] as Researcher[]
-      });
-    }
-
-    return forkJoin(
-      semanticResults.map((publication) =>
-        this.publicationsApi.get(publication.id).pipe(
-          catchError(() => of(null))
-        )
-      )
-    ).pipe(
-      switchMap((publicationDetails) => {
-        const publications = publicationDetails.filter((detail): detail is Publication => detail !== null);
-        const researcherIds = Array.from(new Set(
-          publications.flatMap((publication) =>
-            publication.authors
-              .map((author) => author.researcherId)
-              .filter((researcherId): researcherId is number => researcherId !== null)
-          )
-        ));
-
-        if (researcherIds.length === 0) {
-          return of({
-            semanticResults,
-            publications,
-            researchers: [] as Researcher[]
-          });
-        }
-
-        return forkJoin(
-          researcherIds.map((researcherId) =>
-            this.researchersApi.get(researcherId).pipe(
-              catchError(() => of(null))
-            )
-          )
-        ).pipe(
-          map((researcherDetails) => ({
-            semanticResults,
-            publications,
-            researchers: researcherDetails.filter((detail): detail is Researcher => detail !== null)
-          }))
-        );
-      })
-    );
+  private applyResponse(response: ExpertFinderSearchResponse): void {
+    this.results.set(response.results);
+    this.responseWarnings.set(response.warnings);
+    this.loading.set(false);
   }
 
-  private buildExpertCards(
-    query: string,
-    mode: ExpertFinderMode,
-    researchUnitId: number | undefined,
-    activeFilter: ActiveResearcherFilter,
-    semanticResults: PublicationSemanticSearchResult[],
-    publications: Publication[],
-    researchers: Researcher[]
-  ): ExpertMatchCard[] {
-    if (semanticResults.length === 0 || publications.length === 0 || researchers.length === 0) {
-      return [];
-    }
-
-    const publicationMap = new Map<number, Publication>(
-      publications.map((publication) => [publication.id, publication])
-    );
-    const researcherMap = new Map<number, Researcher>(
-      researchers.map((researcher) => [researcher.id, researcher])
-    );
-    const aggregation = new Map<number, ExpertAggregation>();
-
-    for (const result of semanticResults) {
-      const publication = publicationMap.get(result.id);
-      if (!publication) {
-        continue;
-      }
-
-      const evidenceTopics = publication.topics.map((topic) => topic.name);
-      const evidencePublication: ExpertEvidencePublication = {
-        id: publication.id,
-        title: publication.title,
-        year: publication.year,
-        similarityScore: result.similarityScore,
-        retrievalReason: result.retrievalReason,
-        topics: evidenceTopics
-      };
-
-      for (const author of publication.authors) {
-        if (author.researcherId === null) {
-          continue;
-        }
-        const researcher = researcherMap.get(author.researcherId);
-        if (!researcher) {
-          continue;
-        }
-
-        const existing = aggregation.get(researcher.id);
-        if (existing) {
-          existing.evidencePublications.push(evidencePublication);
-        } else {
-          aggregation.set(researcher.id, {
-            researcher,
-            evidencePublications: [evidencePublication]
-          });
-        }
-      }
-    }
-
-    const queryTokens = this.tokenize(query);
-
-    return Array.from(aggregation.values())
-      .filter(({ researcher }) => this.matchesFilters(researcher, researchUnitId, activeFilter))
-      .map(({ researcher, evidencePublications }) => {
-        const sortedEvidence = [...evidencePublications]
-          .sort((left, right) => right.similarityScore - left.similarityScore)
-          .slice(0, 3);
-        const topics = this.collectTopics(researcher, evidencePublications, queryTokens);
-        const score = this.calculateScore(researcher, evidencePublications, queryTokens);
-
-        return {
-          researcher,
-          score,
-          scorePercent: Math.round(score * 100),
-          confidenceLabel: this.confidenceLabel(score, mode),
-          explanation: this.buildExplanation(researcher, mode, evidencePublications, topics),
-          topics,
-          evidencePublications: sortedEvidence
-        };
-      })
-      .sort((left, right) => {
-        if (right.score !== left.score) {
-          return right.score - left.score;
-        }
-        return right.evidencePublications.length - left.evidencePublications.length;
-      });
+  private resetResults(): void {
+    this.loading.set(false);
+    this.hasSearched.set(false);
+    this.errorMessage.set('');
+    this.results.set([]);
+    this.responseWarnings.set([]);
   }
 
-  private matchesFilters(
-    researcher: Researcher,
-    researchUnitId: number | undefined,
-    activeFilter: ActiveResearcherFilter
-  ): boolean {
-    if (activeFilter === 'active' && !researcher.active) {
-      return false;
+  private publicWarning(warning: string): string | null {
+    const normalized = warning.toLowerCase();
+    if (normalized.includes('evidencia validada')) {
+      return null;
     }
-
-    if (researchUnitId === undefined) {
-      return true;
+    if (normalized.includes('embeddings') || normalized.includes('proveedor') || normalized.includes('dimension')) {
+      return 'La búsqueda se ha completado con coincidencia textual cuando no había señales semánticas disponibles.';
     }
-
-    return researcher.currentAffiliations.some((affiliation) => affiliation.researchUnitId === researchUnitId)
-      || researcher.primaryAffiliation?.researchUnitId === researchUnitId;
+    if (normalized.includes('debil')) {
+      return 'Algunas coincidencias tienen evidencia limitada para esta consulta.';
+    }
+    return warning;
   }
 
-  private collectTopics(
-    researcher: Researcher,
-    evidencePublications: ExpertEvidencePublication[],
-    queryTokens: string[]
-  ): string[] {
-    const topicCounts = new Map<string, number>();
-    const profileTopics = researcher.topics.map((topic) => topic.name);
-
-    for (const topic of profileTopics) {
-      topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 2);
-    }
-
-    for (const publication of evidencePublications) {
-      for (const topic of publication.topics) {
-        topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
-      }
-    }
-
-    return Array.from(topicCounts.entries())
-      .sort((left, right) => {
-        const leftMatches = this.topicMatchScore(left[0], queryTokens);
-        const rightMatches = this.topicMatchScore(right[0], queryTokens);
-        if (rightMatches !== leftMatches) {
-          return rightMatches - leftMatches;
-        }
-        if (right[1] !== left[1]) {
-          return right[1] - left[1];
-        }
-        return left[0].localeCompare(right[0], 'es');
-      })
-      .map(([topic]) => topic)
-      .slice(0, 5);
-  }
-
-  private calculateScore(
-    researcher: Researcher,
-    evidencePublications: ExpertEvidencePublication[],
-    queryTokens: string[]
-  ): number {
-    const averageSimilarity = evidencePublications.reduce((total, publication) => total + publication.similarityScore, 0)
-      / evidencePublications.length;
-    const bestSimilarity = Math.max(...evidencePublications.map((publication) => publication.similarityScore));
-    const evidenceStrength = Math.min(evidencePublications.length, 4) / 4;
-    const topicStrength = this.topicStrength(researcher, evidencePublications, queryTokens);
-
-    return Math.min(0.99, averageSimilarity * 0.62 + bestSimilarity * 0.18 + evidenceStrength * 0.12 + topicStrength * 0.08);
-  }
-
-  private topicStrength(
-    researcher: Researcher,
-    evidencePublications: ExpertEvidencePublication[],
-    queryTokens: string[]
-  ): number {
-    const topics = [
-      ...researcher.topics.map((topic) => topic.name),
-      ...evidencePublications.flatMap((publication) => publication.topics)
-    ];
-    const matches = topics.filter((topic) => this.topicMatchScore(topic, queryTokens) > 0).length;
-    return Math.min(matches, 4) / 4;
-  }
-
-  private topicMatchScore(topic: string, queryTokens: string[]): number {
-    const topicTokens = this.tokenize(topic);
-    if (topicTokens.length === 0 || queryTokens.length === 0) {
-      return 0;
-    }
-    return queryTokens.filter((token) => topicTokens.includes(token)).length;
-  }
-
-  private buildExplanation(
-    researcher: Researcher,
-    mode: ExpertFinderMode,
-    evidencePublications: ExpertEvidencePublication[],
-    topics: string[]
-  ): string {
-    const affiliation = this.affiliationLabel(researcher);
-    const topicText = topics.length > 0
-      ? ` Temas públicos más cercanos: ${topics.slice(0, 3).join(', ')}.`
-      : '';
-
-    return `Modo ${MODE_CONFIGURATION[mode].label}: ${evidencePublications.length} ${evidencePublications.length === 1 ? 'publicación conecta' : 'publicaciones conectan'} la consulta con ${affiliation}.${topicText}`;
-  }
-
-  private confidenceLabel(score: number, mode: ExpertFinderMode): string {
-    if (score >= 0.8) {
-      return 'alta';
-    }
-    if (score >= 0.65) {
-      return 'media';
-    }
-    return mode === 'BROAD' ? 'exploratoria' : 'inicial';
-  }
-
-  private tokenize(value: string): string[] {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((token) => token.length >= 3);
+  private normalizeScore(score: number): number {
+    return score > 1 ? Math.min(score / 100, 1) : Math.max(score, 0);
   }
 
   private toMode(value: string | null): ExpertFinderMode {
     return value === 'STRICT' || value === 'BROAD' ? value : 'BALANCED';
   }
 
-  private toActiveFilter(value: string | null): ActiveResearcherFilter {
-    return value === 'all' ? 'all' : 'active';
-  }
-
-  private toNumber(value: string): number | undefined {
+  private toNumber(value: string): number | null {
     const parsed = Number(value);
-    return Number.isFinite(parsed) && value !== '' && value !== 'all' ? parsed : undefined;
+    return Number.isFinite(parsed) && value !== '' && value !== 'all' ? parsed : null;
   }
 }
-

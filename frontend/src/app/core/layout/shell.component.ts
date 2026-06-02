@@ -35,38 +35,76 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
     MatToolbarModule
   ],
   template: `
-    <mat-toolbar class="topbar" [class.internal-topbar]="currentArea() !== 'portal'">
-      <div class="topbar-inner">
-        <a class="brand" routerLink="/portal" aria-label="Portal público de Inteligencia de Investigación">
-          <span class="brand-mark">RI</span>
-          <span class="brand-copy">
-            <strong>Inteligencia de Investigación</strong>
-            <small>{{ currentAreaTagline() }}</small>
-          </span>
-        </a>
+    @if (currentArea() === 'portal') {
+      <div class="portal-shell">
+        <mat-toolbar class="topbar public-topbar">
+          <div class="topbar-inner public-topbar-inner">
+            <a class="brand public-brand" routerLink="/portal" aria-label="Portal de investigación">
+              <span class="brand-mark public-brand-mark">RI</span>
+              <span class="brand-copy public-brand-copy">
+                <strong>Portal de investigación</strong>
+                <small>Inteligencia de Investigación</small>
+              </span>
+            </a>
 
-        @if (currentArea() === 'portal') {
-          <nav class="public-nav" aria-label="Portal público">
-            @for (item of publicNavigation; track item.label) {
-              <a
-                mat-button
-                [routerLink]="item.path"
-                routerLinkActive="active-link"
-                [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-              >
-                {{ item.label }}
-              </a>
-            }
-          </nav>
-
-          <div class="public-session-actions">
-            @if (currentUser()) {
-              <a mat-stroked-button class="login-button" [routerLink]="defaultPrivateAreaPath()">Entrar al área interna</a>
-            } @else {
-              <a mat-flat-button color="primary" class="login-button" routerLink="/login">Iniciar sesión</a>
-            }
+            <div class="public-shell-actions" aria-label="Acciones del portal">
+              <span class="public-language-chip" aria-label="Idioma seleccionado: español">ES</span>
+              <a class="intranet-link" [routerLink]="defaultPrivateAreaPath()">Intranet</a>
+            </div>
           </div>
-        } @else {
+        </mat-toolbar>
+
+        <main class="shell-main portal-main" id="portal-content">
+          <router-outlet />
+        </main>
+
+        <footer class="public-footer" aria-label="Pie del portal">
+          <div class="public-footer-inner">
+            <section class="public-footer-brand" aria-label="Información institucional">
+              <span class="brand-mark footer-brand-mark">RI</span>
+              <div class="public-footer-copy">
+                <strong>Portal de investigación</strong>
+                <span>Inteligencia de investigación</span>
+                <p>
+                  Actividad pública revisada por la institución para explorar unidades,
+                  investigadores, publicaciones y evidencias científicas.
+                </p>
+              </div>
+            </section>
+
+            <nav class="public-footer-nav" aria-label="Secciones del portal">
+              <span>Explorar</span>
+              @for (item of publicFooterNavigation; track item.label) {
+                <a [routerLink]="item.path">{{ item.label }}</a>
+              }
+            </nav>
+
+            <div class="public-footer-utility" aria-label="Enlaces de utilidad">
+              <span>Información</span>
+              <span class="footer-placeholder">Accesibilidad</span>
+              <span class="footer-placeholder">Privacidad</span>
+              <span class="footer-placeholder">Contacto</span>
+              <a [routerLink]="defaultPrivateAreaPath()">Intranet</a>
+            </div>
+          </div>
+
+          <div class="public-footer-bottom">
+            <span>© Portal de investigación</span>
+            <span>Actividad pública revisada por la institución.</span>
+          </div>
+        </footer>
+      </div>
+    } @else {
+      <mat-toolbar class="topbar internal-topbar">
+        <div class="topbar-inner">
+          <a class="brand" routerLink="/portal" aria-label="Portal público de Inteligencia de Investigación">
+            <span class="brand-mark">RI</span>
+            <span class="brand-copy">
+              <strong>Inteligencia de Investigación</strong>
+              <small>{{ currentAreaTagline() }}</small>
+            </span>
+          </a>
+
           <div class="internal-context">
             <span>{{ currentAreaLabel() }}</span>
             <strong>{{ currentAreaSummaryTitle() }}</strong>
@@ -102,15 +140,9 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
               </mat-menu>
             }
           </div>
-        }
-      </div>
-    </mat-toolbar>
+        </div>
+      </mat-toolbar>
 
-    @if (currentArea() === 'portal') {
-      <main class="shell-main portal-main">
-        <router-outlet />
-      </main>
-    } @else {
       <div
         class="internal-shell"
         [class.admin-shell]="currentArea() === 'admin'"
@@ -178,18 +210,16 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
       top: 0;
       z-index: 20;
       height: auto;
-      min-height: 82px;
       padding: 0 20px;
-      border-bottom: 1px solid rgba(214, 220, 227, 0.96);
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(16px);
       color: #183041;
+      white-space: normal;
     }
 
     .internal-topbar {
       min-height: 64px;
-      border-bottom-color: rgba(191, 203, 215, 0.96);
+      border-bottom: 1px solid rgba(191, 203, 215, 0.96);
       background: rgba(247, 250, 252, 0.98);
+      backdrop-filter: blur(16px);
     }
 
     .topbar-inner {
@@ -260,37 +290,11 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
       display: none;
     }
 
-    .public-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-width: 0;
-      flex-wrap: wrap;
-    }
-
-    .public-nav a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      padding: 0 12px;
-      border-radius: 8px;
-      color: #44546a;
-      font-size: 0.9rem;
-      font-weight: 700;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    .public-nav a:hover,
-    .active-link,
     .active-menu-item {
       background: #eef3f6;
       color: #15364a !important;
     }
 
-    .public-session-actions,
     .session-actions {
       display: flex;
       align-items: center;
@@ -299,7 +303,6 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
       min-width: 0;
     }
 
-    .login-button,
     .portal-link,
     .user-menu-button,
     .nav-toggle {
@@ -473,26 +476,17 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
     }
 
     @media (max-width: 1180px) {
-      .topbar {
-        min-height: 96px;
+      .internal-topbar {
+        min-height: 84px;
         padding-block: 12px;
       }
 
-      .internal-topbar {
-        min-height: 84px;
-      }
-
-      .topbar-inner {
+      .internal-topbar .topbar-inner {
         grid-template-columns: 1fr;
         align-items: start;
         gap: 14px;
       }
 
-      .public-nav {
-        justify-content: flex-start;
-      }
-
-      .public-session-actions,
       .session-actions {
         justify-content: flex-start;
         flex-wrap: wrap;
@@ -534,23 +528,6 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
         white-space: normal;
       }
 
-      .public-nav {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        width: 100%;
-      }
-
-      .public-nav a {
-        width: 100%;
-        min-height: 38px;
-        padding-inline: 12px;
-        font-size: 0.86rem;
-        white-space: normal;
-        text-align: center;
-      }
-
-      .public-session-actions,
       .session-actions {
         width: 100%;
       }
@@ -560,7 +537,6 @@ type AreaKey = 'portal' | 'researcher' | 'admin';
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .public-session-actions .login-button,
       .session-actions .nav-toggle,
       .session-actions .portal-link,
       .session-actions .user-menu-button {
@@ -692,8 +668,7 @@ export class ShellComponent {
     }));
   });
 
-  readonly publicNavigation: NavigationItem[] = [
-    { label: 'Inicio', path: '/portal', exact: true },
+  readonly publicFooterNavigation: NavigationItem[] = [
     { label: 'Unidades', path: '/portal/unidades' },
     { label: 'Investigadores', path: '/portal/investigadores' },
     { label: 'Publicaciones', path: '/portal/publicaciones' },

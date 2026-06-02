@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/researchers/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/research-units/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/portal/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/portal/context-assistant/ask").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/portal/publications/*/explain").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/strategic-map/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/opportunities/**").permitAll()

@@ -24,7 +24,7 @@ P1 stabilization has been applied before the visual redesign:
 
 - `GET /api/portal/publications/{id}` now exists as a portal-specific public publication detail contract.
 - The endpoint resolves through validated/public visibility only and returns 404 when the publication is not public in the existing service convention.
-- `/portal/publicaciones/:id` now has a minimal public-safe route/component that uses the portal endpoint.
+- `/portal/publicaciones/:id` now has an editorial public-safe route/component that uses the portal endpoint.
 - Portal publication links in home, unit detail, researcher detail, news detail, publication search, expert finder evidence, and public explanation references now target `/portal/publicaciones/:id` where safe.
 - Legacy `/publications/:id` remains available for legacy/internal compatibility.
 - `/portal/asistente` and `/portal/copiloto` now redirect to `/portal`; `/copilot` and `/admin/asistente` remain available.
@@ -41,7 +41,7 @@ P1 stabilization has been applied before the visual redesign:
 | `/portal/investigadores` | `PortalResearchersPageComponent` | Dedicated public researcher directory. Uses portal-specific API and portal-specific cards. |
 | `/portal/investigadores/:id` | `PortalResearcherDetailPageComponent` | Dedicated public researcher profile. Publication links now target `/portal/publicaciones/:id`; embeds the researcher graph when small enough. |
 | `/portal/publicaciones` | `PublicationsPageComponent` with `data: { portalView: true }` | Shared publication search/list page. Public mode hides some internal controls, still uses shared component and `/api/publications`, and now links results to `/portal/publicaciones/:id`. |
-| `/portal/publicaciones/:id` | `PortalPublicationDetailPageComponent` | Minimal public-safe publication detail route implemented for the P4 contract. Uses `/api/portal/publications/{id}` and avoids shared CRUD/workflow UI. |
+| `/portal/publicaciones/:id` | `PortalPublicationDetailPageComponent` | Editorial public-safe publication detail route implemented for the P4 contract. Uses `/api/portal/publications/{id}`, keeps related links inside `/portal/publicaciones/:id`, and avoids shared CRUD/workflow UI. |
 | `/portal/guia-expertos` | `ExpertFinderPageComponent` with `data: { portalView: true }` | Public expert finder. Builds results in the frontend from semantic publication results and researcher detail calls. Evidence links now target `/portal/publicaciones/:id`. |
 | `/portal/asistente` | Redirect to `/portal` | Compatibility redirect. It is no longer a promoted standalone public assistant route. |
 | `/publications/:id` | `PublicationDetailPageComponent` | Legacy/shared publication detail route preserved for legacy/internal compatibility and non-portal flows. |
@@ -176,7 +176,7 @@ Current shell: `frontend/src/app/core/layout/shell.component.ts`.
 - Contextual return: `NavigationContextService` with `returnTo` and `returnLabel`.
 - Issues/gaps:
   - Backend detail caps researchers at 100 and publications/activities at 25, so it is not a full context source for assistant scope.
-  - No embedded contextual assistant yet.
+  - Contextual assistant is embedded and resolves unit context through `/api/portal/context-assistant/ask` instead of using this display DTO as the trusted full context.
 
 ### Researcher Detail
 
@@ -198,41 +198,43 @@ Current shell: `frontend/src/app/core/layout/shell.component.ts`.
 - Related activities/publications: yes.
 - Contextual return: `NavigationContextService`.
 - Issues/gaps:
-  - No embedded contextual assistant yet.
-  - Need confirm backend detail returns all validated authored publications at expected dataset sizes before using it as assistant context.
+  - Contextual assistant is embedded and resolves researcher context through `/api/portal/context-assistant/ask`, using server-side public publication search rather than the visible display list.
 
 ### Publication Detail
 
 - Public route/component today: `/portal/publicaciones/:id`, `PortalPublicationDetailPageComponent`.
-- Public-specific: yes. It is a minimal P4 contract component, not the final visual redesign.
+- Public-specific: yes. It is the P4 editorial public detail page and does not reuse the legacy/internal detail component.
 - Legacy route/component remains: `/publications/:id`, shared `PublicationDetailPageComponent`.
 - API calls:
   - `/api/portal/publications/{id}`
   - `/api/portal/publications/{id}/explain` for public explanation dialog behavior
 - Sections/cards:
-  - Minimal summary/metadata card.
-  - Abstract or public summary.
-  - Authors, public internal researcher links, public unit links, external organizations, topics, warnings, and related-publication preview.
-- Tabs: none.
+  - Editorial hero with title, public metadata, source links, and explanation action.
+  - Public summary and abstract section with key metadata.
+  - Authors, public internal researcher links, public unit links, external organizations, topics, and related-publication preview.
+- Tabs: yes. The public detail uses `Resumen`, `Autores y entidades`, `Temas y relaciones`, and `Publicaciones relacionadas`.
 - Graph/network: none.
 - Related publications: yes, through a safe preview returned by `/api/portal/publications/{id}`.
 - Contextual return: `NavigationContextService`; portal context is inferred partly from `returnTo` starting with `/portal`.
 - Issues/gaps:
-  - This is not the final redesigned public detail page.
   - Related-publication preview is intentionally small and not a full contextual assistant scope.
-  - No embedded contextual assistant yet.
+  - The explanation action remains structured and publication-scoped; the contextual assistant now sits alongside it for custom questions.
 
 ## Assistant Current State
 
 - `/portal/asistente` now redirects to `/portal`.
 - `/portal/copiloto` now redirects to `/portal`.
+- Public contextual assistant entry points are embedded in publication detail, researcher detail, unit detail, publication search results, and expert finder results.
+- `POST /api/portal/context-assistant/ask` resolves trusted public context server-side for `PUBLICATION_DETAIL`, `RESEARCHER_PROFILE`, `UNIT_PROFILE`, `PUBLICATION_SEARCH_RESULTS`, and `EXPERT_FINDER_RESULTS`.
+- Search and expert finder scopes send typed filter snapshots only; they do not send visible result cards or frontend-provided evidence as trusted context.
+- Large scopes are bounded and summarized with warnings such as `El contexto se ha resumido para mantener la respuesta legible.` and `Se han usado las evidencias públicas más relevantes de este conjunto.`
 - `CopilotPageComponent` is still used by `/copilot` and `/admin/asistente`.
 - Current legacy/global behavior:
   - User enters a general question.
   - Optional controls include `limit`, retrieval mode, and min similarity.
   - Public mode always uses validated-only context; admin-only non-validated toggle is hidden in portal mode.
   - The component first retrieves publications, then sends those retrieved publications back to the answer endpoint.
-  - Answer layout is answer-first, with cited publications below and retrieved context in an optional panel.
+  - Answer layout is answer-first inside a modal, with cited evidence below, hover highlighting between answer references and evidence cards, and retrieved context/evidence used in optional collapsed sections.
 - Current backend endpoints:
   - `POST /api/copilot/ask`
   - `POST /api/copilot/retrieve`
@@ -245,12 +247,11 @@ Current shell: `frontend/src/app/core/layout/shell.component.ts`.
 - Current request shape:
   - `CopilotRetrieveRequest`: `question`, `limit`, `minSimilarity`, `retrievalMode`, `includeNonValidated`.
   - `CopilotAnswerRequest`: `question`, `retrievedPublications`, `includeNonValidated`.
-- Contextual assistant gaps:
-  - No target entity scope such as publication, researcher, unit, search, or expert finder result.
-  - No server-side scope token or filter snapshot.
-  - No way to say "all publications for this researcher/unit/search" independently from the UI paginator.
-  - Public UI caps retrieval at 20; backend validation allows larger but still limit-based retrieval.
-  - Answer endpoint accepts client-provided retrieved publications and filters visibility, but does not reconstruct a trusted full scope.
+- Contextual assistant current limits:
+  - Entity and filter scopes are server-resolved, but evidence sent to the model is intentionally capped for readability and performance.
+  - Publication semantic search scope uses backend retrieval for the query when no structured filters are present; structured filters use public validated field search.
+  - Expert finder scope reuses backend expert finder ranking, then reduces representative publication evidence for the answer.
+  - Provider availability still depends on the configured local AI provider; failures are returned as public warnings.
 
 ## Backend/API State And Gaps
 
@@ -271,7 +272,7 @@ Contract:
 
 Remaining gap:
 
-- The current frontend detail page is a minimal contract implementation; P4 should still produce the final public editorial layout and contextual assistant placement.
+- Contextual assistant scopes are available, but the evidence limit and summarization behavior should be tuned with larger institutional datasets.
 
 ### Public Researcher Full Context
 
@@ -430,10 +431,11 @@ Backend files/modules:
 
 ### P4 - Public Publication Detail
 
-- Expand the minimal `/portal/publicaciones/:id` implementation into the final public detail page.
-- Keep public publication links on `/portal/publicaciones/:id`.
-- Preserve the separation from shared CRUD/workflow-heavy structure.
-- Preserve `/publications/:id` for legacy/internal compatibility.
+- Status: completed for the editorial public detail page.
+- `/portal/publicaciones/:id` uses a portal-specific hero, tabs, public metadata, public-safe linked entities, related cards, and a click-triggered public explanation dialog.
+- Public publication links remain on `/portal/publicaciones/:id`.
+- The page stays separated from shared CRUD/workflow-heavy structure.
+- `/publications/:id` remains preserved for legacy/internal compatibility.
 
 ### P5 - Simplify Public Search/List Pages
 
@@ -444,10 +446,11 @@ Backend files/modules:
 
 ### P6 - Contextual Assistant Scopes
 
-- Add server-resolved assistant scope support for publication detail, researcher detail, unit detail, publication search, and expert finder results.
-- Ensure scopes resolve all relevant validated context, not only current UI page results.
-- Add warning/limit metadata when a full scope is intentionally bounded.
-- Embed contextual assistant panels/cards into relevant public pages.
+- Status: implemented.
+- Server-resolved assistant scope support exists for publication detail, researcher detail, unit detail, publication search, and expert finder results.
+- Scopes resolve public validated context server-side and avoid trusting current UI paginator slices or rendered expert cards.
+- Warning/limit metadata is returned when a scope is intentionally bounded.
+- Contextual assistant entry points are embedded into the relevant public pages and open a modal for question, structured answer, cited evidence, collapsed evidence-used details, and technical context.
 
 ### P7 - Public QA And Regression Pass
 
@@ -470,4 +473,4 @@ Backend files/modules:
 
 ## Summary
 
-The current portal already has dedicated public unit and researcher pages, a broad public home page, a unified publication search, an expert finder, a minimal public publication detail route, and compatibility redirects away from the standalone public assistant route. The main blockers before redesign are now narrower: the public shell still behaves like a menu-driven app, publication detail still needs its final public editorial layout, expert finder still bypasses the backend endpoint, and backend assistant context remains query/limit-based rather than route/entity/search-scope based.
+The current portal already has dedicated public unit and researcher pages, a broad public home page, a unified publication search, an expert finder, an editorial public publication detail route, and compatibility redirects away from the standalone public assistant route. The main blockers before redesign are now narrower: expert finder still bypasses the backend endpoint, and backend assistant context remains query/limit-based rather than route/entity/search-scope based.

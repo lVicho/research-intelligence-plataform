@@ -20,8 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CopilotService {
 
-    private static final Pattern CITATION_MARKER_PATTERN = Pattern.compile("\\[(?:pub|publication):(\\d+)]", Pattern.CASE_INSENSITIVE);
     private static final String MISSING_CITATION_CONTEXT_WARNING = "La respuesta contiene una cita que no está en el contexto recuperado.";
     private static final String NO_EXPLICIT_CITATIONS_WARNING = "La respuesta no contiene citas explícitas a publicaciones.";
 
@@ -219,10 +216,26 @@ public class CopilotService {
                 .append(publication.year() == null ? "desconocido" : publication.year())
                 .append("\nAutores: ")
                 .append(publication.authors() == null || publication.authors().isEmpty() ? "desconocidos" : String.join(", ", publication.authors()))
+                .append("\nUnidades vinculadas: ")
+                .append(publication.researchUnits() == null || publication.researchUnits().isEmpty()
+                    ? "sin unidades internas visibles"
+                    : String.join(", ", publication.researchUnits()))
+                .append("\nAfiliaciones externas declaradas: ")
+                .append(publication.externalAffiliations() == null || publication.externalAffiliations().isEmpty()
+                    ? "sin afiliaciones externas declaradas"
+                    : String.join(", ", publication.externalAffiliations()))
                 .append("\nTemas: ")
                 .append(publication.topics() == null || publication.topics().isEmpty() ? "sin temas" : String.join(", ", publication.topics()))
                 .append("\nFuente: ")
                 .append(publication.source() == null || publication.source().isBlank() ? "sin fuente" : publication.source())
+                .append("\nDOI: ")
+                .append(publication.doi() == null || publication.doi().isBlank() ? "sin DOI" : publication.doi())
+                .append("\nURL: ")
+                .append(publication.url() == null || publication.url().isBlank() ? "sin URL" : publication.url())
+                .append("\nMotivo de selecciÃ³n: ")
+                .append(publication.retrievalReason() == null || publication.retrievalReason().isBlank()
+                    ? "sin motivo registrado"
+                    : publication.retrievalReason())
                 .append("\nResumen: ")
                 .append(publication.abstractText() == null || publication.abstractText().isBlank() ? "Resumen no disponible." : publication.abstractText());
             builder.append("\n\n");
@@ -241,6 +254,8 @@ public class CopilotService {
             publication.getSource(),
             publication.getUrl(),
             context.authors(),
+            List.of(),
+            List.of(),
             context.topics(),
             context.similarityScore(),
             context.passedThreshold(),
@@ -261,20 +276,24 @@ public class CopilotService {
 
         List<CopilotCitationResponse> citedPublications = new ArrayList<>();
         Map<Long, Boolean> citedIds = new LinkedHashMap<>();
-        Matcher matcher = CITATION_MARKER_PATTERN.matcher(answer == null ? "" : answer);
         boolean foundMarker = false;
         boolean foundMarkerOutsideContext = false;
-        while (matcher.find()) {
+        for (PublicationCitationMarkers.Marker marker : PublicationCitationMarkers.extract(answer)) {
             foundMarker = true;
-            Long publicationId = Long.valueOf(matcher.group(1));
-            CopilotRetrievedPublicationResponse publication = retrievedById.get(publicationId);
-            if (publication == null) {
+            if (marker.publicationIds().isEmpty()) {
                 foundMarkerOutsideContext = true;
                 continue;
             }
-            if (!citedIds.containsKey(publicationId)) {
-                citedIds.put(publicationId, true);
-                citedPublications.add(toCitation(publication, citedPublications.size() + 1));
+            for (Long publicationId : marker.publicationIds()) {
+                CopilotRetrievedPublicationResponse publication = retrievedById.get(publicationId);
+                if (publication == null) {
+                    foundMarkerOutsideContext = true;
+                    continue;
+                }
+                if (!citedIds.containsKey(publicationId)) {
+                    citedIds.put(publicationId, true);
+                    citedPublications.add(toCitation(publication, citedPublications.size() + 1));
+                }
             }
         }
         if (!foundMarker) {

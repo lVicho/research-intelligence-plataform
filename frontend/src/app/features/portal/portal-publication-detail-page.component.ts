@@ -2,17 +2,25 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 
-import { PortalPublicationDetail, PublicationSummary } from '../../core/api/api-models';
+import { PortalPublicationDetail, PublicationType } from '../../core/api/api-models';
 import { PortalApiService } from '../../core/api/portal-api.service';
 import { NavigationContextService } from '../../core/navigation/navigation-context.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { ErrorStateComponent } from '../../shared/components/error-state.component';
 import { LoadingStateComponent } from '../../shared/components/loading-state.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TagChipComponent } from '../../shared/components/tag-chip.component';
 import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/display-labels';
+import { PortalContextAssistantComponent } from './portal-context-assistant.component';
+import { PortalPublicationExplanationDialogComponent } from './portal-publication-explanation-dialog.component';
+
+type PortalPublicationTab = 'summary' | 'authors' | 'topics' | 'related';
+
+interface PortalPublicationTabItem {
+  id: PortalPublicationTab;
+  label: string;
+}
 
 @Component({
   selector: 'rip-portal-publication-detail-page',
@@ -20,188 +28,310 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
   imports: [
     RouterLink,
     MatButtonModule,
-    MatCardModule,
     EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
-    PageHeaderComponent,
+    PortalContextAssistantComponent,
     TagChipComponent
   ],
   template: `
     <section class="page portal-publication-detail">
-      <rip-page-header
-        [title]="detail()?.title || 'Publicación'"
-        eyebrow="Portal público"
-        [subtitle]="subtitle()"
-      >
-        <button mat-button type="button" (click)="navigateBack()">{{ backLabel() }}</button>
-      </rip-page-header>
-
       @if (loading()) {
-        <rip-loading-state message="Cargando ficha pública de la publicación" />
+        <rip-loading-state message="Cargando publicación..." />
       } @else if (errorMessage()) {
         <rip-error-state [message]="errorMessage()" />
       } @else {
         @if (detail(); as publication) {
-          <mat-card appearance="outlined" class="summary-card">
-            <mat-card-content>
-              <div class="meta-row">
-                <rip-tag-chip [label]="publicationTypeLabel(publication.type)" tone="type" />
-                <span>{{ publication.year || 's. f.' }}</span>
-                @if (publication.venueName || publication.source) {
-                  <span>{{ publication.venueName || publication.source }}</span>
-                }
-              </div>
+          <article class="publication-hero" aria-labelledby="publication-title">
+          <button mat-button type="button" class="back-link" (click)="navigateBack()">{{ backLabel() }}</button>
 
-              @if (publication.publicSummary || publication.abstractText) {
-                <section class="text-block">
-                  <h2>{{ publication.publicSummary ? 'Resumen público' : 'Resumen' }}</h2>
-                  <p>{{ publication.publicSummary || publication.abstractText }}</p>
-                </section>
-              } @else {
-                <rip-empty-state
-                  title="Sin resumen público"
-                  message="Esta publicación todavía no tiene un resumen visible para el portal."
-                />
-              }
+          <div class="hero-topline">
+            <rip-tag-chip [label]="publicationTypeLabel(publication.type)" tone="type" />
+            <span>{{ publication.year || 's. f.' }}</span>
+            @if (publication.publicationDate) {
+              <span>{{ dateLabel(publication.publicationDate) }}</span>
+            }
+            @if (sourceLabel(publication) !== 'No disponible') {
+              <span>{{ sourceLabel(publication) }}</span>
+            }
+          </div>
 
-              <div class="metadata-grid">
-                <div>
-                  <span>DOI</span>
-                  <strong>{{ publication.doi || 'No disponible' }}</strong>
-                </div>
-                <div>
-                  <span>Fuente</span>
-                  <strong>{{ sourceLabel(publication) }}</strong>
-                </div>
-                <div>
-                  <span>Editorial</span>
-                  <strong>{{ publication.publisherName || 'No disponible' }}</strong>
-                </div>
-                <div>
-                  <span>Fecha</span>
-                  <strong>{{ dateLabel(publication.publicationDate) }}</strong>
-                </div>
-              </div>
+          <div class="hero-copy">
+            <h1 id="publication-title">{{ publication.title }}</h1>
+          </div>
 
-              @if (publication.url) {
-                <a mat-stroked-button [href]="publication.url" target="_blank" rel="noreferrer">Abrir fuente externa</a>
-              }
-            </mat-card-content>
-          </mat-card>
+          <div class="hero-actions" aria-label="Acciones de publicación">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="openExplanation(publication)"
+            >
+              Explicar esta publicación
+            </button>
 
-          <section class="content-grid">
-            <mat-card appearance="outlined">
-              <mat-card-header>
-                <mat-card-title>Autores</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="stack-list">
-                  @for (author of publication.authors; track author.id) {
-                    @if (author.researcherId && author.publicProfileAvailable) {
-                      <a
-                        class="list-card"
-                        [routerLink]="['/portal/investigadores', author.researcherId]"
-                        [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
-                      >
-                        <strong>{{ author.name || 'Investigador interno' }}</strong>
-                        <p>Perfil público disponible</p>
-                      </a>
-                    } @else {
-                      <div class="list-card passive-card">
-                        <strong>{{ author.name || 'Autor sin nombre público' }}</strong>
-                        <p>{{ author.externalAffiliation || (author.internal ? 'Autor interno sin perfil público' : 'Afiliación externa no disponible') }}</p>
-                      </div>
+            @if (doiUrl(publication.doi); as doiLink) {
+              <a mat-stroked-button [href]="doiLink" target="_blank" rel="noreferrer">Abrir DOI</a>
+            }
+
+            @if (publication.url) {
+              <a mat-stroked-button [href]="publication.url" target="_blank" rel="noreferrer">Fuente externa</a>
+            }
+          </div>
+        </article>
+
+          <rip-portal-context-assistant
+            contextScope="PUBLICATION_DETAIL"
+            [targetId]="publication.id"
+            triggerLabel="Preguntar sobre esta publicación"
+            contextTitle="Asistente contextual de la publicación"
+            helperText="Haz preguntas libres sobre esta publicación y sus relaciones públicas validadas."
+          />
+
+          <nav class="portal-tabs" aria-label="Secciones de la publicación">
+          @for (tab of tabs; track tab.id) {
+            <button
+              type="button"
+              [class.active]="activeTab() === tab.id"
+              [attr.aria-selected]="activeTab() === tab.id"
+              (click)="selectTab(tab.id)"
+            >
+              {{ tab.label }}
+            </button>
+          }
+        </nav>
+
+          <section class="tab-panel" [attr.data-active-tab]="activeTab()">
+          @switch (activeTab()) {
+            @case ('summary') {
+              <section class="detail-section summary-section" aria-labelledby="summary-title">
+                <header class="section-header">
+                  <p class="section-kicker">Resumen</p>
+                  <h2 id="summary-title">Lectura pública de la publicación</h2>
+                  <p>Información validada para comprender la aportación sin entrar en flujos internos.</p>
+                </header>
+
+                <div class="summary-layout">
+                  <div class="text-stack">
+                    @if (publication.publicSummary) {
+                      <article class="editorial-block">
+                        <h3>Resumen público</h3>
+                        <p>{{ publication.publicSummary }}</p>
+                      </article>
                     }
-                  } @empty {
-                    <rip-empty-state title="Sin autores" message="Esta publicación no tiene autores visibles." />
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
 
-            <mat-card appearance="outlined">
-              <mat-card-header>
-                <mat-card-title>Contexto institucional</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="stack-list">
-                  @for (researcher of publication.internalResearchers; track researcher.id) {
-                    <a
-                      class="list-card"
-                      [routerLink]="['/portal/investigadores', researcher.id]"
-                      [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
-                    >
-                      <strong>{{ researcher.displayName || researcher.fullName }}</strong>
-                      <p>{{ researcher.primaryAffiliationName || 'Afiliación pública' }}</p>
-                    </a>
-                  }
+                    @if (showAbstract(publication)) {
+                      <article class="editorial-block">
+                        <h3>Resumen académico</h3>
+                        <p>{{ publication.abstractText }}</p>
+                      </article>
+                    }
 
-                  @for (unit of publication.researchUnits; track unit.id) {
-                    <a
-                      class="list-card"
-                      [routerLink]="['/portal/unidades', unit.id]"
-                      [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
-                    >
-                      <strong>{{ unit.name }}</strong>
-                      <p>{{ researchUnitTypeLabel(unit.type) }}</p>
-                    </a>
-                  }
-
-                  @for (organization of publication.externalOrganizations; track organization) {
-                    <div class="list-card passive-card">
-                      <strong>{{ organization }}</strong>
-                      <p>Organización externa citada en la autoría</p>
-                    </div>
-                  } @empty {
-                    @if (publication.internalResearchers.length === 0 && publication.researchUnits.length === 0) {
+                    @if (!publication.publicSummary && !publication.abstractText) {
                       <rip-empty-state
-                        title="Sin enlaces institucionales"
-                        message="No hay perfiles o unidades públicas enlazables para esta publicación."
+                        title="Sin resumen público"
+                        message="Esta publicación todavía no tiene un resumen visible para el portal."
                       />
                     }
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
-          </section>
+                  </div>
 
-          <section class="content-grid">
-            <mat-card appearance="outlined">
-              <mat-card-header>
-                <mat-card-title>Temas</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="chip-list">
-                  @for (topic of publication.topics; track topic.id) {
-                    <rip-tag-chip [label]="topic.name" />
-                  } @empty {
-                    <rip-empty-state title="Sin temas" message="Todavía no hay temas públicos asociados." />
-                  }
+                  <aside class="metadata-panel" aria-label="Metadatos principales">
+                    <h3>Metadatos</h3>
+                    <dl>
+                      <div>
+                        <dt>Año</dt>
+                        <dd>{{ publication.year || 's. f.' }}</dd>
+                      </div>
+                      <div>
+                        <dt>Fecha</dt>
+                        <dd>{{ dateLabel(publication.publicationDate) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Fuente</dt>
+                        <dd>{{ sourceLabel(publication) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Editorial</dt>
+                        <dd>{{ publication.publisherName || 'No disponible' }}</dd>
+                      </div>
+                      <div>
+                        <dt>DOI</dt>
+                        <dd>
+                          @if (doiUrl(publication.doi); as doiLink) {
+                            <a [href]="doiLink" target="_blank" rel="noreferrer">{{ publication.doi }}</a>
+                          } @else {
+                            No disponible
+                          }
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Idioma</dt>
+                        <dd>{{ languageLabel(publication.languageCode) }}</dd>
+                      </div>
+                    </dl>
+                  </aside>
                 </div>
-              </mat-card-content>
-            </mat-card>
+              </section>
+            }
 
-            <mat-card appearance="outlined">
-              <mat-card-header>
-                <mat-card-title>Publicaciones relacionadas</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="stack-list">
+            @case ('authors') {
+              <section class="detail-section" aria-labelledby="authors-title">
+                <header class="section-header">
+                  <p class="section-kicker">Autores y entidades</p>
+                  <h2 id="authors-title">Personas y organizaciones vinculadas</h2>
+                  <p>Autores, perfiles públicos internos, unidades institucionales y colaboradores externos citados en la ficha.</p>
+                </header>
+
+                <div class="entity-grid">
+                  <article class="section-panel">
+                    <h3>Autores</h3>
+                    <div class="entity-list">
+                      @for (author of publication.authors; track author.id) {
+                        @if (author.researcherId && author.publicProfileAvailable) {
+                          <a
+                            class="entity-card interactive"
+                            [routerLink]="['/portal/investigadores', author.researcherId]"
+                            [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
+                          >
+                            <strong>{{ author.name || 'Investigador interno' }}</strong>
+                            <span>Perfil público disponible</span>
+                          </a>
+                        } @else {
+                          <div class="entity-card">
+                            <strong>{{ author.name || 'Autor sin nombre público' }}</strong>
+                            <span>{{ author.externalAffiliation || (author.internal ? 'Autor interno sin perfil público' : 'Afiliación externa no disponible') }}</span>
+                          </div>
+                        }
+                      } @empty {
+                        <rip-empty-state title="Sin autores" message="Esta publicación no tiene autores visibles." />
+                      }
+                    </div>
+                  </article>
+
+                  <article class="section-panel">
+                    <h3>Investigadores internos</h3>
+                    <div class="entity-list">
+                      @for (researcher of publication.internalResearchers; track researcher.id) {
+                        <a
+                          class="entity-card interactive"
+                          [routerLink]="['/portal/investigadores', researcher.id]"
+                          [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
+                        >
+                          <strong>{{ researcher.displayName || researcher.fullName }}</strong>
+                          <span>{{ researcher.primaryAffiliationName || 'Perfil público institucional' }}</span>
+                        </a>
+                      } @empty {
+                        <rip-empty-state
+                          title="Sin perfiles enlazables"
+                          message="No hay perfiles internos públicos asociados a esta publicación."
+                        />
+                      }
+                    </div>
+                  </article>
+
+                  <article class="section-panel">
+                    <h3>Unidades relacionadas</h3>
+                    <div class="entity-list">
+                      @for (unit of publication.researchUnits; track unit.id) {
+                        <a
+                          class="entity-card interactive"
+                          [routerLink]="['/portal/unidades', unit.id]"
+                          [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
+                        >
+                          <strong>{{ unit.name }}</strong>
+                          <span>{{ researchUnitTypeLabel(unit.type) }}</span>
+                        </a>
+                      } @empty {
+                        <rip-empty-state
+                          title="Sin unidades públicas"
+                          message="No hay unidades públicas enlazables para esta publicación."
+                        />
+                      }
+                    </div>
+                  </article>
+
+                  <article class="section-panel">
+                    <h3>Entidades externas</h3>
+                    <div class="entity-list">
+                      @for (organization of publication.externalOrganizations; track organization) {
+                        <div class="entity-card">
+                          <strong>{{ organization }}</strong>
+                          <span>Organización externa citada en la autoría</span>
+                        </div>
+                      } @empty {
+                        <rip-empty-state
+                          title="Sin entidades externas"
+                          message="No hay colaboradores externos visibles en esta ficha."
+                        />
+                      }
+                    </div>
+                  </article>
+                </div>
+              </section>
+            }
+
+            @case ('topics') {
+              <section class="detail-section" aria-labelledby="topics-title">
+                <header class="section-header">
+                  <p class="section-kicker">Temas y relaciones</p>
+                  <h2 id="topics-title">Cómo se sitúa en el mapa temático</h2>
+                  <p>Tipo documental y temas normalizados que ayudan a explorar publicaciones relacionadas en el portal.</p>
+                </header>
+
+                <div class="topic-layout">
+                  <article class="section-panel">
+                    <h3>Tipo de publicación</h3>
+                    <rip-tag-chip [label]="publicationTypeLabel(publication.type)" tone="type" />
+                  </article>
+
+                  <article class="section-panel topic-panel">
+                    <h3>Temas</h3>
+                    <div class="topic-list">
+                      @for (topic of publication.topics; track topic.id) {
+                        <a
+                          class="topic-chip"
+                          [routerLink]="['/portal/publicaciones']"
+                          [queryParams]="{ topic: topic.name }"
+                        >
+                          {{ topic.name }}
+                        </a>
+                      } @empty {
+                        <rip-empty-state title="Sin temas" message="Todavía no hay temas públicos asociados." />
+                      }
+                    </div>
+                  </article>
+                </div>
+              </section>
+            }
+
+            @case ('related') {
+              <section class="detail-section" aria-labelledby="related-title">
+                <header class="section-header">
+                  <p class="section-kicker">Publicaciones relacionadas</p>
+                  <h2 id="related-title">Más actividad pública conectada</h2>
+                  <p>Vista previa de publicaciones validadas que comparten señales temáticas o bibliográficas.</p>
+                </header>
+
+                <div class="related-grid">
                   @for (related of publication.relatedPublications; track related.id) {
                     <a
-                      class="list-card"
+                      class="related-card"
                       [routerLink]="['/portal/publicaciones', related.id]"
                       [queryParams]="navigationContext.returnQueryParams('Volver a la publicación')"
                     >
-                      <strong>{{ related.title }}</strong>
-                      <p>{{ related.year || 's. f.' }} · {{ related.source || related.doi || 'Repositorio institucional' }}</p>
-                      <div class="chip-list">
+                      <div class="related-topline">
                         <rip-tag-chip [label]="publicationTypeLabel(related.type)" tone="type" />
-                        @for (topic of related.topics.slice(0, 3); track topic) {
-                          <rip-tag-chip [label]="topic" />
-                        }
+                        <span>{{ related.year || 's. f.' }}</span>
                       </div>
+                      <strong>{{ related.title }}</strong>
+                      <p>{{ related.source || related.doi || 'Repositorio institucional' }}</p>
+                      @if (related.topics.length > 0) {
+                        <div class="topic-list compact">
+                          @for (topic of related.topics.slice(0, 3); track topic) {
+                            <span class="topic-chip small">{{ topic }}</span>
+                          }
+                        </div>
+                      }
                     </a>
                   } @empty {
                     <rip-empty-state
@@ -210,168 +340,323 @@ import { publicationTypeLabel, researchUnitTypeLabel } from '../../shared/utils/
                     />
                   }
                 </div>
-              </mat-card-content>
-            </mat-card>
-          </section>
-
-          @if (publication.warnings.length > 0) {
-            <mat-card appearance="outlined" class="warning-card">
-              <mat-card-content>
-                @for (warning of publication.warnings; track warning) {
-                  <p>{{ warning }}</p>
-                }
-              </mat-card-content>
-            </mat-card>
+              </section>
+            }
           }
+          </section>
         } @else {
           <rip-empty-state
             title="Publicación no disponible"
-            message="Esta ficha no está visible en el portal público."
+            message="La publicación no está disponible públicamente."
           />
         }
       }
     </section>
   `,
   styles: [`
-    .portal-publication-detail {
-      gap: 24px;
+    .publication-hero,
+    .detail-section,
+    .section-panel,
+    .metadata-panel,
+    .explanation-callout,
+    .related-card {
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
+      background: var(--portal-surface);
     }
 
-    .summary-card mat-card-content,
-    .stack-list {
+    .publication-hero {
       display: grid;
-      gap: 16px;
+      gap: 20px;
+      padding: clamp(22px, 4vw, 42px);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--portal-accent-soft) 76%, #ffffff) 0%, #ffffff 58%),
+        var(--portal-surface);
     }
 
-    .summary-card {
-      border-radius: 18px !important;
+    .back-link {
+      justify-self: start;
+      color: var(--portal-link);
     }
 
-    .meta-row,
-    .chip-list {
+    .hero-topline,
+    .hero-actions,
+    .topic-list,
+    .related-topline {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
     }
 
-    .meta-row span {
-      color: #5f7182;
-      font-weight: 720;
+    .hero-copy {
+      display: grid;
+      gap: 14px;
     }
 
-    .text-block {
+    .hero-copy h1 {
+      margin: 0;
+      color: var(--portal-text);
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.03;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      max-width: 86ch;
+      color: var(--portal-muted);
+      line-height: 1.7;
+      white-space: pre-line;
+    }
+
+    .portal-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--portal-border);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--portal-surface-muted) 58%, #ffffff);
+    }
+
+    .portal-tabs button {
+      flex: 1 1 180px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--portal-muted);
+      cursor: pointer;
+      font-weight: 760;
+      text-align: center;
+    }
+
+    .portal-tabs button.active {
+      background: var(--portal-surface);
+      color: var(--portal-accent);
+      box-shadow: 0 8px 18px rgba(16, 37, 48, 0.1);
+    }
+
+    .detail-section {
+      display: grid;
+      gap: 22px;
+      padding: clamp(20px, 3vw, 30px);
+    }
+
+    .section-header {
+      display: grid;
+      gap: 8px;
+    }
+
+    .section-kicker,
+    .explanation-callout span {
+      margin: 0;
+      color: var(--portal-accent);
+      font-size: 0.78rem;
+      font-weight: 780;
+      text-transform: uppercase;
+    }
+
+    .section-header h2,
+    .section-panel h3,
+    .metadata-panel h3,
+    .editorial-block h3 {
+      margin: 0;
+      color: var(--portal-text);
+      line-height: 1.2;
+    }
+
+    .section-header p:not(.section-kicker),
+    .editorial-block p,
+    .explanation-callout p,
+    .related-card p {
+      margin: 0;
+      color: var(--portal-muted);
+      line-height: 1.65;
+    }
+
+    .summary-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .text-stack,
+    .entity-list,
+    .metadata-panel dl,
+    .topic-layout,
+    .related-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .editorial-block {
       display: grid;
       gap: 10px;
       max-width: 92ch;
     }
 
-    .text-block h2 {
-      margin: 0;
-      color: #132235;
-      font-size: 1.3rem;
-      line-height: 1.2;
-    }
-
-    .text-block p {
-      margin: 0;
-      color: #405466;
-      line-height: 1.75;
+    .editorial-block p {
       white-space: pre-line;
     }
 
-    .metadata-grid {
+    .metadata-panel,
+    .section-panel,
+    .explanation-callout {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 12px;
+      gap: 14px;
+      padding: 18px;
     }
 
-    .metadata-grid div {
-      display: grid;
-      gap: 5px;
-      padding: 14px 16px;
-      border: 1px solid #e0e8ee;
-      border-radius: 12px;
-      background: #fbfdfe;
+    .metadata-panel dl {
+      margin: 0;
     }
 
-    .metadata-grid span {
-      color: #617283;
-      font-size: 0.74rem;
+    .metadata-panel dl div {
+      display: grid;
+      gap: 4px;
+      padding-block: 10px;
+      border-bottom: 1px solid color-mix(in srgb, var(--portal-border) 72%, transparent);
+    }
+
+    .metadata-panel dl div:last-child {
+      border-bottom: 0;
+    }
+
+    .metadata-panel dt {
+      color: var(--portal-accent);
+      font-size: 0.76rem;
       font-weight: 780;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
-    .metadata-grid strong,
-    .list-card strong {
-      color: #102033;
-      line-height: 1.35;
+    .metadata-panel dd {
+      margin: 0;
+      color: var(--portal-text);
+      line-height: 1.45;
+      overflow-wrap: anywhere;
     }
 
-    .list-card {
+    .explanation-callout {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      background: color-mix(in srgb, var(--portal-accent-soft) 70%, #ffffff);
+    }
+
+    .entity-grid {
       display: grid;
-      gap: 8px;
-      padding: 16px;
-      border: 1px solid #e0e8ee;
-      border-radius: 12px;
-      background: #ffffff;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .entity-card {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      padding: 14px 16px;
+      border: 1px solid color-mix(in srgb, var(--portal-border) 84%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--portal-surface-muted) 32%, #ffffff);
       color: inherit;
       text-decoration: none;
     }
 
-    a.list-card {
-      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    .entity-card strong,
+    .related-card strong {
+      color: var(--portal-text);
+      line-height: 1.35;
     }
 
-    a.list-card:hover {
-      border-color: #aac8d7;
-      box-shadow: 0 14px 26px rgba(20, 32, 51, 0.08);
-      transform: translateY(-1px);
+    .entity-card span {
+      color: var(--portal-muted);
+      line-height: 1.45;
     }
 
-    .passive-card {
-      background: #fbfdfe;
+    .entity-card.interactive:hover,
+    .related-card:hover {
+      border-color: color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
     }
 
-    .list-card p,
-    .warning-card p {
-      margin: 0;
-      color: #617283;
-      line-height: 1.55;
+    .topic-layout {
+      grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+      align-items: start;
     }
 
-    .warning-card {
-      border-color: #e7d7b8 !important;
-      background: #fffaf0;
+    .topic-panel {
+      align-content: start;
+    }
+
+    .topic-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      max-width: 100%;
+      padding: 5px 11px;
+      border: 1px solid color-mix(in srgb, var(--portal-accent) 24%, var(--portal-border));
+      border-radius: 999px;
+      background: var(--portal-accent-soft);
+      color: var(--portal-accent);
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+      text-decoration: none;
+    }
+
+    .related-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .related-card {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      padding: 18px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    @media (max-width: 920px) {
+      .summary-layout,
+      .entity-grid,
+      .topic-layout,
+      .related-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .explanation-callout {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
 export class PortalPublicationDetailPageComponent implements OnInit {
   private readonly portalApi = inject(PortalApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   readonly navigationContext = inject(NavigationContextService);
+
+  readonly tabs: PortalPublicationTabItem[] = [
+    { id: 'summary', label: 'Resumen' },
+    { id: 'authors', label: 'Autores y entidades' },
+    { id: 'topics', label: 'Temas y relaciones' },
+    { id: 'related', label: 'Publicaciones relacionadas' }
+  ];
 
   readonly detail = signal<PortalPublicationDetail | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal('');
+  readonly activeTab = signal<PortalPublicationTab>('summary');
   readonly publicationId = Number(this.route.snapshot.paramMap.get('id'));
-  readonly subtitle = computed(() => {
-    const publication = this.detail();
-    if (!publication) {
-      return 'Ficha pública de publicación';
-    }
-    return [
-      publication.year,
-      publication.venueName || publication.source || publication.publisherName
-    ].filter(Boolean).join(' · ') || 'Actividad pública validada';
-  });
+  readonly backLabel = computed(() =>
+    this.navigationContext.resolve(this.route, '/portal/publicaciones', 'Volver a publicaciones').label
+  );
 
   ngOnInit(): void {
     if (!Number.isFinite(this.publicationId)) {
       this.loading.set(false);
-      this.errorMessage.set('La publicación solicitada no es válida.');
+      this.errorMessage.set('No se ha podido cargar la publicación.');
       return;
     }
 
@@ -384,17 +669,45 @@ export class PortalPublicationDetailPageComponent implements OnInit {
         },
         error: () => {
           this.loading.set(false);
-          this.errorMessage.set('No se pudo cargar la ficha pública de la publicación.');
+          this.errorMessage.set('No se ha podido cargar la publicación.');
         }
       });
   }
 
-  publicationTypeLabel(type: PortalPublicationDetail['type'] | PublicationSummary['type']): string {
+  selectTab(tab: PortalPublicationTab): void {
+    this.activeTab.set(tab);
+  }
+
+  openExplanation(publication: PortalPublicationDetail): void {
+    this.dialog.open(PortalPublicationExplanationDialogComponent, {
+      width: 'min(900px, 96vw)',
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+      autoFocus: false,
+      data: {
+        publicationId: publication.id,
+        title: publication.title,
+        initialStyle: 'PLAIN'
+      }
+    });
+  }
+
+  publicationTypeLabel(type: PublicationType): string {
     return publicationTypeLabel(type);
   }
 
   researchUnitTypeLabel(type: string): string {
     return researchUnitTypeLabel(type);
+  }
+
+  primarySummary(publication: PortalPublicationDetail): string {
+    return (publication.publicSummary || publication.abstractText || '').trim();
+  }
+
+  showAbstract(publication: PortalPublicationDetail): boolean {
+    const abstractText = publication.abstractText?.trim() ?? '';
+    const publicSummary = publication.publicSummary?.trim() ?? '';
+    return abstractText.length > 0 && abstractText !== publicSummary;
   }
 
   sourceLabel(publication: PortalPublicationDetail): string {
@@ -410,11 +723,40 @@ export class PortalPublicationDetailPageComponent implements OnInit {
     if (!value) {
       return 'Sin fecha';
     }
-    return new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(new Date(value));
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Sin fecha';
+    }
+    return new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(date);
   }
 
-  backLabel(): string {
-    return this.navigationContext.resolve(this.route, '/portal/publicaciones', 'Volver a publicaciones').label;
+  doiUrl(doi: string | null): string | null {
+    const value = doi?.trim();
+    if (!value) {
+      return null;
+    }
+    return value.startsWith('http://') || value.startsWith('https://')
+      ? value
+      : `https://doi.org/${value}`;
+  }
+
+  languageLabel(value: string | null): string {
+    if (!value) {
+      return 'No disponible';
+    }
+    const normalized = value.trim().toLowerCase();
+    const labels: Record<string, string> = {
+      es: 'Español',
+      spa: 'Español',
+      en: 'Inglés',
+      eng: 'Inglés',
+      pt: 'Portugués',
+      por: 'Portugués',
+      fr: 'Francés',
+      fre: 'Francés',
+      fra: 'Francés'
+    };
+    return labels[normalized] ?? value.toUpperCase();
   }
 
   navigateBack(): void {

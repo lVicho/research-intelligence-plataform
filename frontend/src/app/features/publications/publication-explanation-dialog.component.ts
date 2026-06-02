@@ -1001,6 +1001,10 @@ export class PublicationExplanationDialogComponent implements OnInit {
       source: publication.source,
       url: publication.url,
       authors: publication.authors.map((author) => author.researcherName || author.externalAuthorName || 'Autor sin nombre'),
+      researchUnits: [],
+      externalAffiliations: publication.authors
+        .map((author) => author.externalAffiliation)
+        .filter((affiliation): affiliation is string => Boolean(affiliation)),
       topics: publication.topics.map((topic) => topic.name),
       similarityScore: isPrimary ? 1 : related?.semanticScore ?? related?.finalScore ?? null,
       passedThreshold: true,

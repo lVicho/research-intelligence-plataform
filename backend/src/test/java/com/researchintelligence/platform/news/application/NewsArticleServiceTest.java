@@ -35,6 +35,7 @@ import com.researchintelligence.platform.researchunits.persistence.ResearchUnitE
 import com.researchintelligence.platform.researchunits.persistence.ResearchUnitRepository;
 import com.researchintelligence.platform.shared.api.PageResponse;
 import com.researchintelligence.platform.shared.application.BusinessRuleException;
+import com.researchintelligence.platform.shared.application.ResourceNotFoundException;
 import com.researchintelligence.platform.validation.domain.ValidationStatus;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -148,6 +149,14 @@ class NewsArticleServiceTest {
 
         assertEquals(List.of("Noticia de investigacion"), response.content().stream().map(PortalNewsArticleSummaryResponse::title).toList());
         verify(repository).searchPublic(eq(NewsArticleStatus.PUBLISHED), isNull(), eq("%"), any(Pageable.class));
+    }
+
+    @Test
+    void publicDetailRequestsPublishedNewsOnly() {
+        when(repository.findByIdAndStatus(12L, NewsArticleStatus.PUBLISHED)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.findPublicById(12L));
+        verify(repository).findByIdAndStatus(12L, NewsArticleStatus.PUBLISHED);
     }
 
     @Test
